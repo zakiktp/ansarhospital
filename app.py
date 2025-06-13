@@ -1,12 +1,15 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import smtplib
 from email.message import EmailMessage
-from fpdf import FPDF
 from dotenv import load_dotenv
+from fpdf import FPDF
+import pandas as pd
+import csv
+from io import BytesIO, StringIO
 
 # Load environment variables
 load_dotenv()
@@ -15,34 +18,11 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
 
-
-def send_email(to_email, subject, body):
-    EMAIL_ADDRESS = os.getenv("SMTP_EMAIL")
-    EMAIL_PASSWORD = os.getenv("SMTP_PASSWORD")
-
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = EMAIL_ADDRESS
-    msg["To"] = to_email
-    msg.set_content(body)
-
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        smtp.send_message(msg)
-
-send_email("zakiup@gmail.com", "Appointment Submitted", "New appointment has been recorded.")
-
-# SendGrid API Key
-#SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-
 # Google Sheets setup
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-
-# Use different path depending on environment
-CREDENTIALS_PATH = os.getenv("GOOGLE_CREDS_PATH", "service_account.json")
+CREDENTIALS_PATH = os.getenv("CREDENTIALS_PATH", "credential.json")
 creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_PATH, scope)
 client = gspread.authorize(creds)
-
 
 # Load Google Sheets
 spreadsheet = client.open("Database")
@@ -50,25 +30,29 @@ login_ws = spreadsheet.worksheet("Login")
 appointment_ws = spreadsheet.worksheet("Appointment")
 dropdown_ws = spreadsheet.worksheet("Dropdownlist")
 
-def send_email(subject, content):
+def send_email(subject, body):
+    smtp_email = os.getenv("SMTP_EMAIL")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = smtp_email
+    msg["To"] = "zakiup@gmail.com"
+    msg.set_content(body)
+
     try:
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        message = Mail(
-            from_email='noreply@ansarhospital.com',
-            to_emails='zakiup@gmail.com',
-            subject=subject,
-            html_content=content
-        )
-        sg.send(message)
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(smtp_email, smtp_password)
+            smtp.send_message(msg)
+            print("✅ Email sent successfully")
     except Exception as e:
-        print("Email sending error:", e)
+        print(f"❌ Failed to send email: {e}")
 
 @app.route("/test")
 def test_credentials():
     try:
-        # Try accessing a sheet
         spreadsheet.title
-        return "✅ Credentials and Google Sheets access successful."
+        return "✅ Google Sheets credentials work!"
     except Exception as e:
         return f"❌ Error: {e}"
 
@@ -119,16 +103,14 @@ def appointments():
         appointment_ws.append_row(new_row)
 
         email_body = f"""
-        <h3>New Appointment Submitted</h3>
-        <ul>
-            <li><strong>Name:</strong> {name}</li>
-            <li><strong>Guardian:</strong> {guardian}</li>
-            <li><strong>Address:</strong> {address}</li>
-            <li><strong>Mobile:</strong> {mobile}</li>
-            <li><strong>Status:</strong> {status}</li>
-            <li><strong>Staff:</strong> {staff}</li>
-            <li><strong>Timestamp:</strong> {now}</li>
-        </ul>
+        New Appointment Submitted:
+        Name: {name}
+        Guardian: {guardian}
+        Address: {address}
+        Mobile: {mobile}
+        Status: {status}
+        Staff: {staff}
+        Timestamp: {now}
         """
         send_email("New Appointment Entry", email_body)
         flash("Appointment saved successfully!", "success")
@@ -156,30 +138,44 @@ def appointments():
 
     return render_template("appointment.html", dropdown_values=dropdown_values, results=results)
 
-def send_appointment_email(to_email, subject, body):
-    smtp_email = os.getenv("SMTP_EMAIL")
-    smtp_password = os.getenv("SMTP_PASSWORD")
+@app.route("/export_appointment/csv")
+def export_csv():
+    records = appointment_ws.get_all_records()
+    si = StringIO()
+    writer = csv.DictWriter(si, fieldnames=records[0].keys())
+    writer.writeheader()
+    writer.writerows(records)
+    output = BytesIO()
+    output.write(si.getvalue().encode('utf-8'))
+    output.seek(0)
+    return send_file(output, mimetype="text/csv", as_attachment=True, download_name="appointments.csv")
 
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = smtp_email
-    msg["To"] = to_email
-    msg.set_content(body)
+@app.route("/export_appointment/excel")
+def export_excel():
+    records = appointment_ws.get_all_records()
+    df = pd.DataFrame(records)
+    output = BytesIO()
+    df.to_excel(output, index=False, engine="openpyxl")
+    output.seek(0)
+    return send_file(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", as_attachment=True, download_name="appointments.xlsx")
 
-    try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login(smtp_email, smtp_password)
-            smtp.send_message(msg)
-            print("✅ Email sent successfully")
-    except Exception as e:
-        print(f"❌ Failed to send email: {e}")
+@app.route("/export_appointment/pdf")
+def export_pdf():
+    records = appointment_ws.get_all_records()
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_font("Arial", size=10)
 
-send_appointment_email(
-    to_email="zakiup@gmail.com",  # or dynamically use the user's email
-    subject="New Appointment Submitted",
-    body=f"Name: {name}\nFather/Husband: {husband_name}\nAddress: {address}\nMobile: {mobile}\nStatus: {status}"
-)
+    col_width = 40
+    for row in records:
+        line = ", ".join(str(value) for value in row.values())
+        pdf.multi_cell(0, 10, line)
 
+    output = BytesIO()
+    pdf.output(output)
+    output.seek(0)
+    return send_file(output, mimetype="application/pdf", as_attachment=True, download_name="appointments.pdf")
 
 if __name__ == "__main__":
     app.run(debug=True)

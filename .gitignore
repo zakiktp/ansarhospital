@@ -1,7 +1,8 @@
+# Ignore secrets and sensitive files
+*.json
 .env
 __pycache__/
 *.pyc
-secrets/
-flask_session/
-*.sqlite3
-*.log
+instance/
+.vscode/
+.DS_Store

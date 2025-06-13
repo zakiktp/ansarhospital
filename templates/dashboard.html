@@ -3,42 +3,49 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard</title>
+    <title>Dashboard | Ansar Hospital</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 text-gray-800">
 
-<!-- Mobile Navbar -->
-<div class="md:hidden flex justify-between items-center bg-blue-800 text-white p-4">
-    <h1 class="text-xl font-bold">Dashboard</h1>
-    <button onclick="toggleSidebar()" class="text-white focus:outline-none">
-        ☰
-    </button>
-</div>
+<!-- Mobile Topbar -->
+<header class="md:hidden flex items-center justify-between bg-blue-800 text-white p-4">
+    <h1 class="text-lg font-bold">Ansar Dashboard</h1>
+    <button onclick="toggleSidebar()" class="text-white text-2xl focus:outline-none">☰</button>
+</header>
 
+<!-- Layout -->
 <div class="flex min-h-screen">
+
     <!-- Sidebar -->
-    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 w-64 bg-blue-800 text-white transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out z-40 md:z-0">
-        <div class="p-4">
-            <h2 class="text-2xl font-bold mb-6 hidden md:block">Dashboard</h2>
-            <nav class="flex flex-col space-y-2">
-                <a href="/dashboard" class="hover:bg-blue-700 px-3 py-2 rounded">Home</a>
-                <a href="/opd" class="hover:bg-blue-700 px-3 py-2 rounded">OPD</a>
-                <a href="/appointment" class="hover:bg-blue-700 px-3 py-2 rounded">Appointment</a>
-                <a href="/attendance" class="hover:bg-blue-700 px-3 py-2 rounded">Attendance</a>
-                <a href="/logout" class="mt-auto hover:bg-red-600 px-3 py-2 rounded">Logout</a>
+    <aside id="sidebar" class="fixed z-40 inset-y-0 left-0 w-64 bg-blue-800 text-white transform -translate-x-full md:translate-x-0 md:static transition-transform duration-200 ease-in-out">
+        <div class="p-4 flex flex-col h-full">
+            <div class="text-2xl font-bold mb-6 hidden md:block">Dashboard</div>
+            <nav class="flex flex-col gap-2 flex-1">
+                <a href="/dashboard" class="px-4 py-2 rounded hover:bg-blue-700 transition">Home</a>
+                <a href="/opd" class="px-4 py-2 rounded hover:bg-blue-700 transition">OPD</a>
+                <a href="/appointments" class="px-4 py-2 rounded hover:bg-blue-700 transition">Appointments</a>
+                <a href="/attendance" class="px-4 py-2 rounded hover:bg-blue-700 transition">Attendance</a>
             </nav>
+            <div class="mt-6">
+                <a href="/logout" class="block w-full text-center bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition">Logout</a>
+            </div>
         </div>
     </aside>
 
     <!-- Main Content -->
     <main class="flex-1 p-6 md:ml-64">
-        <h2 class="text-xl font-semibold mb-4">Welcome, {{ name }}</h2>
-        <p class="mb-2">Role: {{ role }}</p>
-        <p>Access: {{ access }}</p>
+        <h2 class="text-2xl font-semibold mb-2">Welcome, {{ name }}</h2>
+        <p class="text-sm mb-1">Role: <strong>{{ role }}</strong></p>
+        <p class="text-sm mb-4">Access: <strong>{{ access }}</strong></p>
+
+        <!-- Page content goes here -->
+        {% block content %}{% endblock %}
     </main>
 </div>
 
+<!-- Sidebar Toggle Script -->
 <script>
     function toggleSidebar() {
         const sidebar = document.getElementById("sidebar");
