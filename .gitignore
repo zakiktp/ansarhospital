@@ -1,0 +1,7 @@
+.env
+__pycache__/
+*.pyc
+secrets/
+flask_session/
+*.sqlite3
+*.log

@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: hospital-dashboard
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app
+    envVars:
+      - key: FLASK_SECRET_KEY
+        value: 361680d76bff6a3ef91745ad3d76f0558a494a3794056e3f5a55f7e34df70aed
+      - key: SHEET_ID
+        value: 1SWUNnHPbO6uu-lboWWlwJ9iJTvftqogPaKnQyzduywQ
+      - key: CREDENTIALS_PATH
+        value: /etc/secrets/credentials.json
+    secretFiles:
+      - name: credentials.json
+        path: /etc/secrets/credentials.json

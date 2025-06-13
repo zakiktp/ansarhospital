@@ -1,0 +1,50 @@
+<!-- templates/dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+
+<!-- Mobile Navbar -->
+<div class="md:hidden flex justify-between items-center bg-blue-800 text-white p-4">
+    <h1 class="text-xl font-bold">Dashboard</h1>
+    <button onclick="toggleSidebar()" class="text-white focus:outline-none">
+        ☰
+    </button>
+</div>
+
+<div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 w-64 bg-blue-800 text-white transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out z-40 md:z-0">
+        <div class="p-4">
+            <h2 class="text-2xl font-bold mb-6 hidden md:block">Dashboard</h2>
+            <nav class="flex flex-col space-y-2">
+                <a href="/dashboard" class="hover:bg-blue-700 px-3 py-2 rounded">Home</a>
+                <a href="/opd" class="hover:bg-blue-700 px-3 py-2 rounded">OPD</a>
+                <a href="/appointment" class="hover:bg-blue-700 px-3 py-2 rounded">Appointment</a>
+                <a href="/attendance" class="hover:bg-blue-700 px-3 py-2 rounded">Attendance</a>
+                <a href="/logout" class="mt-auto hover:bg-red-600 px-3 py-2 rounded">Logout</a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-6 md:ml-64">
+        <h2 class="text-xl font-semibold mb-4">Welcome, {{ name }}</h2>
+        <p class="mb-2">Role: {{ role }}</p>
+        <p>Access: {{ access }}</p>
+    </main>
+</div>
+
+<script>
+    function toggleSidebar() {
+        const sidebar = document.getElementById("sidebar");
+        sidebar.classList.toggle("-translate-x-full");
+    }
+</script>
+
+</body>
+</html>
