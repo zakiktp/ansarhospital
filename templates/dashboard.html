@@ -2,54 +2,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Dashboard | Ansar Hospital</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100">
 
-<!-- Mobile Topbar -->
-<header class="md:hidden flex items-center justify-between bg-blue-800 text-white p-4">
-    <h1 class="text-lg font-bold">Ansar Dashboard</h1>
-    <button onclick="toggleSidebar()" class="text-white text-2xl focus:outline-none">☰</button>
-</header>
+<!-- Mobile Navbar -->
+<div class="md:hidden flex justify-between items-center bg-blue-800 text-white p-4">
+    <h1 class="text-xl font-bold">Ansar Hospital</h1>
+    <button onclick="toggleSidebar()" class="text-white focus:outline-none">☰</button>
+</div>
 
-<!-- Layout -->
 <div class="flex min-h-screen">
-
     <!-- Sidebar -->
-    <aside id="sidebar" class="fixed z-40 inset-y-0 left-0 w-64 bg-blue-800 text-white transform -translate-x-full md:translate-x-0 md:static transition-transform duration-200 ease-in-out">
-        <div class="p-4 flex flex-col h-full">
-            <div class="text-2xl font-bold mb-6 hidden md:block">Dashboard</div>
-            <nav class="flex flex-col gap-2 flex-1">
-                <a href="/dashboard" class="px-4 py-2 rounded hover:bg-blue-700 transition">Home</a>
-                <a href="/opd" class="px-4 py-2 rounded hover:bg-blue-700 transition">OPD</a>
-                <a href="/appointments" class="px-4 py-2 rounded hover:bg-blue-700 transition">Appointments</a>
-                <a href="/attendance" class="px-4 py-2 rounded hover:bg-blue-700 transition">Attendance</a>
+    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 w-64 bg-blue-800 text-white transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out z-40 md:z-0">
+        <div class="p-4">
+            <h2 class="text-2xl font-bold mb-6 hidden md:block">Menu</h2>
+            <nav class="flex flex-col space-y-2">
+                <a href="/dashboard" class="hover:bg-blue-700 px-3 py-2 rounded">Dashboard</a>
+                <a href="/appointments" class="hover:bg-blue-700 px-3 py-2 rounded">Appointments</a>
+                <a href="/logout" class="hover:bg-red-600 px-3 py-2 rounded">Logout</a>
             </nav>
-            <div class="mt-6">
-                <a href="/logout" class="block w-full text-center bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition">Logout</a>
-            </div>
         </div>
     </aside>
 
     <!-- Main Content -->
     <main class="flex-1 p-6 md:ml-64">
-        <h2 class="text-2xl font-semibold mb-2">Welcome, {{ name }}</h2>
-        <p class="text-sm mb-1">Role: <strong>{{ role }}</strong></p>
-        <p class="text-sm mb-4">Access: <strong>{{ access }}</strong></p>
+        <h2 class="text-2xl font-semibold mb-4 text-blue-700">Welcome, {{ name }}</h2>
+        <div class="mb-4 text-sm text-gray-600">
+            <p>Role: <strong>{{ role }}</strong></p>
+            <p>Access: <strong>{{ access }}</strong></p>
+        </div>
 
-        <!-- Page content goes here -->
-        {% block content %}{% endblock %}
+        <!-- Dashboard Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+            <div class="bg-white rounded shadow p-4">
+                <h3 class="text-lg font-bold text-gray-700">Today's Appointments</h3>
+                <p class="text-2xl text-blue-600 font-bold mt-2">{{ todays_appointments }}</p>
+            </div>
+            <!-- Add more cards as needed -->
+        </div>
     </main>
 </div>
 
-<!-- Sidebar Toggle Script -->
 <script>
     function toggleSidebar() {
-        const sidebar = document.getElementById("sidebar");
-        sidebar.classList.toggle("-translate-x-full");
+        document.getElementById("sidebar").classList.toggle("-translate-x-full");
     }
 </script>
 

@@ -1,16 +1,13 @@
 services:
   - type: web
-    name: ansarhospitalktp
+    name: ansarhospital
     runtime: python
+    region: oregon
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"
     envVars:
-      - key: FLASK_SECRET_KEY
-        value: 361680d76bff6a3ef91745ad3d76f0558a494a3794056e3f5a55f7e34df70aed
-      - key: SHEET_ID
-        value: 1SWUNnHPbO6uu-lboWWlwJ9iJTvftqogPaKnQyzduywQ
-      - key: CREDENTIALS_PATH
+      - key: GOOGLE_CREDS_PATH
         value: /etc/secrets/credentials.json
     secretFiles:
       - name: credentials.json
