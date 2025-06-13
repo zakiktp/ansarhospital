@@ -1,8 +1,26 @@
-# Ignore secrets and sensitive files
-*.json
-.env
+# .gitignore
+
+# Python
 __pycache__/
-*.pyc
-instance/
-.vscode/
+*.py[cod]
+*.egg-info/
+.env
+venv/
+env/
+*.sqlite3
+
+# Mac/Windows
 .DS_Store
+Thumbs.db
+
+# Render / Google Credentials
+service_account.json
+google-credentials.json
+credentials.json
+
+# Logs
+*.log
+
+# VSCode / IDE
+.vscode/
+.idea/
