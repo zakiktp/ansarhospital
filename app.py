@@ -3,8 +3,9 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
+import smtplib
+from email.message import EmailMessage
+from fpdf import FPDF
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -14,18 +15,31 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
 
+
+def send_email(to_email, subject, body):
+    EMAIL_ADDRESS = os.getenv("SMTP_EMAIL")
+    EMAIL_PASSWORD = os.getenv("SMTP_PASSWORD")
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = EMAIL_ADDRESS
+    msg["To"] = to_email
+    msg.set_content(body)
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        smtp.send_message(msg)
+
+send_email("zakiup@gmail.com", "Appointment Submitted", "New appointment has been recorded.")
+
 # SendGrid API Key
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+#SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 
 # Google Sheets setup
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
 # Use different path depending on environment
-if os.getenv("RENDER") == "true":
-    CREDENTIALS_PATH = "/etc/secrets/credentials.json"  # Render
-else:
-    CREDENTIALS_PATH = "service_account.json"  # Local
-
+CREDENTIALS_PATH = os.getenv("GOOGLE_CREDS_PATH", "service_account.json")
 creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_PATH, scope)
 client = gspread.authorize(creds)
 
@@ -141,6 +155,31 @@ def appointments():
                 results.append(row)
 
     return render_template("appointment.html", dropdown_values=dropdown_values, results=results)
+
+def send_appointment_email(to_email, subject, body):
+    smtp_email = os.getenv("SMTP_EMAIL")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = smtp_email
+    msg["To"] = to_email
+    msg.set_content(body)
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(smtp_email, smtp_password)
+            smtp.send_message(msg)
+            print("✅ Email sent successfully")
+    except Exception as e:
+        print(f"❌ Failed to send email: {e}")
+
+send_appointment_email(
+    to_email="zakiup@gmail.com",  # or dynamically use the user's email
+    subject="New Appointment Submitted",
+    body=f"Name: {name}\nFather/Husband: {husband_name}\nAddress: {address}\nMobile: {mobile}\nStatus: {status}"
+)
+
 
 if __name__ == "__main__":
     app.run(debug=True)
