@@ -1,3 +1,88 @@
+
+<!-- templates/appointment.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Appointments</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4">
+
+  <div class="max-w-3xl mx-auto bg-white p-6 rounded shadow">
+    <h2 class="text-2xl font-bold mb-4">Appointment Form</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul>
+        {% for category, message in messages %}
+          <li class="text-{{ 'red' if category == 'error' else 'green' }}-600">{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" class="grid grid-cols-1 gap-4">
+      <input type="text" name="name" placeholder="Patient Name" class="border p-2" required>
+      <input type="text" name="hname" placeholder="Husband / Father's Name" class="border p-2" required>
+      
+      <select name="address" class="border p-2" required>
+        <option value="">Select Address</option>
+        {% for address in dropdowns %}
+          <option value="{{ address }}">{{ address }}</option>
+        {% endfor %}
+        <option value="OTHER">OTHER</option>
+      </select>
+
+      <input type="text" name="mobile" placeholder="Mobile (10 digits)" pattern="\d{10}" class="border p-2" required>
+      <select name="status" class="border p-2">
+        <option value="REPORTED">REPORTED</option>
+        <option value="NOT REPORTED">NOT REPORTED</option>
+      </select>
+
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
+    </form>
+  </div>
+
+  <!-- Today's Records -->
+  <div class="max-w-5xl mx-auto mt-10 bg-white p-6 rounded shadow">
+    <h3 class="text-xl font-bold mb-4">Today's Appointments</h3>
+    <div class="overflow-auto">
+      <table class="min-w-full border border-gray-300 text-sm text-center">
+        <thead class="bg-gray-200">
+          <tr>
+            <th class="border p-2">No.</th>
+            <th class="border p-2">Date</th>
+            <th class="border p-2">Name</th>
+            <th class="border p-2">Husband / Father's Name</th>
+            <th class="border p-2">Address</th>
+            <th class="border p-2">Mobile</th>
+            <th class="border p-2">Staff Name</th>
+            <th class="border p-2">Status</th>
+            <th class="border p-2">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in appointments %}
+          <tr>
+            <td class="border p-2">{{ loop.index }}</td>
+            <td class="border p-2">{{ row['Date'] }}</td>
+            <td class="border p-2">{{ row['Name'] }}</td>
+            <td class="border p-2">{{ row["Husband / Father's Name"] }}</td>
+            <td class="border p-2">{{ row['Address'] }}</td>
+            <td class="border p-2">{{ row['Mobile'] }}</td>
+            <td class="border p-2">{{ row['Staff Name'] }}</td>
+            <td class="border p-2">{{ row['Status'] }}</td>
+            <td class="border p-2"><button class="text-blue-600 underline">Update</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</body>
+</html>
+
 {% extends "dashboard.html" %}
 {% block content %}
 <div class="container mx-auto px-4 py-6">

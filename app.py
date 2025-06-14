@@ -19,6 +19,12 @@ login_sheet = sheet.worksheet("Login")
 appointment_sheet = sheet.worksheet("Appointment")
 dropdown_sheet = sheet.worksheet("Dropdownlist")
 
+# Sheet references
+sheet = client.open("Database")
+login_sheet = sheet.worksheet("Login")
+appointment_sheet = sheet.worksheet("Appointment")
+dropdown_sheet = sheet.worksheet("Dropdownlist")
+
 # Mail config
 app.config.update(
     MAIL_SERVER='smtp.gmail.com',
@@ -45,10 +51,7 @@ def login():
                 "access": user["Access"]
             })
         return redirect("/dashboard")
-
-        
         flash("Invalid credentials", "error")
-
     return render_template("login.html")
 
 
@@ -102,6 +105,14 @@ def appointments():
         elif mobile_query:
             results = [r for r in all_rows if r["Mobile"] == mobile_query]
     return render_template("appointment.html", dropdown_values=dropdown_values, results=results)
+
+# Get today's appointments
+    all_records = appointment_sheet.get_all_records()
+    today = datetime.now().strftime("%d/%m/%Y")
+    todays_appointments = [rec for rec in all_records if rec["Date"].startswith(today)]
+
+    return render_template("appointment.html", name=session["name"], dropdowns=dropdown_addresses, appointments=todays_appointments)
+
 
 @app.route("/logout")
 def logout():
