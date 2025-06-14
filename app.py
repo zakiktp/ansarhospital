@@ -37,15 +37,15 @@ def login():
         users = login_sheet.get_all_records()
 
         for user in users:
-            print(f"Checking user: {user['User']} with password: {user['Password']}")
-            if user["User"] == username and user["Password"] == password:
+            if str(user["User"]).strip() == username and str(user["Password"]).strip() == password:
                 session.update({
-                    "username": username,
-                    "name": user["Name"],
-                    "role": user["Role"],
-                    "access": user["Access"]
-                })
-                return redirect("/dashboard")
+                "username": username,
+                "name": user["Name"],
+                "role": user["Role"],
+                "access": user["Access"]
+            })
+        return redirect("/dashboard")
+
         
         flash("Invalid credentials", "error")
 
