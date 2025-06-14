@@ -10,7 +10,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "fallbacksecretkey")
 
 # Google Sheets setup
-CREDENTIALS_PATH = os.getenv("GOOGLE_CREDS_PATH", "secrets/credentials.json")
+CREDENTIALS_PATH = os.getenv("GOOGLE_CREDS_PATH", "/etc/secrets/credentials.json")
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_PATH, scope)
 client = gspread.authorize(creds)
@@ -35,7 +35,9 @@ def login():
         username = request.form["username"].strip()
         password = request.form["password"].strip()
         users = login_sheet.get_all_records()
+
         for user in users:
+            print(f"Checking user: {user['User']} with password: {user['Password']}")
             if user["User"] == username and user["Password"] == password:
                 session.update({
                     "username": username,
@@ -44,8 +46,11 @@ def login():
                     "access": user["Access"]
                 })
                 return redirect("/dashboard")
+        
         flash("Invalid credentials", "error")
+
     return render_template("login.html")
+
 
 @app.route("/dashboard")
 def dashboard():
