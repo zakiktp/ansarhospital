@@ -77,7 +77,7 @@ def send_mail(to_email, data):
     address = data.get("address", "N/A")
     staff = data.get("staff", "N/A")
     number = data.get("number", "N/A")
-    timestamp = datetime.now().strftime('%d/%m/%Y, %H:%M:%S')
+    timestamp = data.get("timestamp", datetime.now().strftime('%d/%m/%Y, %H:%M:%S'))  # ✅ Use passed timestamp
 
     # Logo path (relative to project)
     logo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static', 'images', 'logo_clinic.png'))
@@ -136,7 +136,7 @@ Kiratpur, Bijnor UP
         <tr><td style="border: 1px solid #ccc; padding: 8px;">Staff</td><td style="border: 1px solid #ccc; padding: 8px;">{staff}</td></tr>
       </table>
       <p style="font-size: 12px; color: #555; margin-top: 20px; text-align: center;">
-        This message was sent by <strong>Ansar Hospital</strong>, Dargopur Nangli.<br>
+        This message was sent by <strong>Ansar Hospital</strong>, Kiratpur, Bijnor UP.<br>
         If you did not request this appointment, please reply to this email.
       </p>
     </div>

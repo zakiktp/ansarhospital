@@ -1,21 +1,20 @@
 services:
   - type: web
-    name: ansar-hospital-app
+    name: ansarhospital
     env: python
-    plan: free
-    region: oregon
-    buildCommand: |
-      pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
+    plan: free
     envVars:
-      - key: GOOGLE_APPLICATION_CREDENTIALS
-        value: credentials/credentials.json
-      - key: EMAIL_SENDER
-        sync: false
-      - key: EMAIL_SENDER_NAME
-        sync: false
+      - key: FLASK_SECRET_KEY
+        value: super-secret-key-here
       - key: SENDGRID_API_KEY
         sync: false
-      - key: EMAIL_RECEIVER
+      - key: EMAIL_SENDER
+        value: ansarhospital@example.com
+      - key: EMAIL_SENDER_NAME
+        value: Ansar Hospital
+      - key: SPREADSHEET_NAME
+        value: Database
+      - key: GOOGLE_CREDS_JSON
         sync: false
-    autoDeploy: true

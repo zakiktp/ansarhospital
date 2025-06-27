@@ -2,17 +2,26 @@
 {% block title %}Appointment{% endblock %}
 
 {% block content %}
-<h4 class="mb-3 fw-bold text-primary">📅 Appointment Dashboard</h4>
-
-<!-- 🧭 Top Navigation -->
+<!-- 📅 Header -->
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h6 class="mb-0 text-muted">Appointment Module</h6>
+  <div class="d-flex align-items-center gap-2">
+    <i class="fa-solid fa-calendar-days fa-xl text-primary"></i>
+    <h4 class="mb-0 fw-bold text-primary">Appointment Dashboard</h4>
+  </div>
   <a href="{{ url_for('auth_utils_bp.logout') }}" class="btn btn-outline-danger btn-sm">Logout</a>
 </div>
 
+<!-- 👤 User Image and Name -->
+<div class="text-center mb-2">
+  <img src="{{ url_for('static', filename='images/' + user.username + '.jpg') }}" alt="User" class="rounded-circle" style="width: 80px; height: 80px; object-fit: cover;">
+  <div class="fw-bold fs-6 mt-1">{{ user.name }}</div>
+  <div id="liveClock" class="text-muted small"></div>
+</div>
+
+<!-- 💬 Form and Search Row -->
 <div class="row g-3 mb-3">
 
-  <!-- 📝 New Appointment Form (Placed First) -->
+  <!-- 📝 New Appointment Form -->
   <div class="col-md-6">
     <fieldset class="border p-3 rounded shadow-sm" style="background-color: #fff9e6;">
       <legend class="w-auto px-2 fw-semibold text-warning">📝 New Appointment</legend>
@@ -55,29 +64,36 @@
     </fieldset>
   </div>
 
-  <!-- 🔍 Search Form -->
+  <!-- 🔍 Search & Stats -->
   <div class="col-md-6">
-    <fieldset class="border p-3 rounded shadow-sm" style="background-color: #e6f2ff;">
+    <fieldset class="border p-3 rounded shadow-sm h-100 d-flex flex-column justify-content-between" style="background-color: #e6f2ff;">
       <legend class="w-auto px-2 fw-semibold text-primary">🔍 Search Appointment</legend>
-      <form method="POST" class="mb-0">
+      <form method="POST">
         <input type="hidden" name="search" value="1">
         <div class="row g-2">
-          <div class="col-6"><input type="text" name="search_name" class="form-control form-control-sm" placeholder="Name" value="{{ request.form.get('search_name', '') }}"></div>
-          <div class="col-6"><input type="text" name="search_mobile" class="form-control form-control-sm" placeholder="Mobile" value="{{ request.form.get('search_mobile', '') }}"></div>
-          <div class="col-6"><input type="text" name="search_address" class="form-control form-control-sm" placeholder="Address" value="{{ request.form.get('search_address', '') }}"></div>
-          <div class="col-6"><input type="date" name="start_date" class="form-control form-control-sm" value="{{ request.form.get('start_date', '') }}"></div>
-          <div class="col-6"><input type="date" name="end_date" class="form-control form-control-sm" value="{{ request.form.get('end_date', '') }}"></div>
+          <div class="col-6"><input type="text" name="search_name" class="form-control form-control-sm" placeholder="Name" onkeyup="this.form.submit()"></div>
+          <div class="col-6"><input type="text" name="search_mobile" class="form-control form-control-sm" placeholder="Mobile" onkeyup="this.form.submit()"></div>
+          <div class="col-6"><input type="text" name="search_address" class="form-control form-control-sm" placeholder="Address" onkeyup="this.form.submit()"></div>
+          <div class="col-6"><input type="date" name="start_date" class="form-control form-control-sm"></div>
+          <div class="col-6"><input type="date" name="end_date" class="form-control form-control-sm"></div>
           <div class="col-6 d-flex gap-2">
             <button type="submit" class="btn btn-sm btn-info w-100">Search</button>
             <a href="{{ url_for('appointment_bp.appointment_main') }}" class="btn btn-sm btn-outline-dark w-100">Clear</a>
           </div>
         </div>
       </form>
+
+      <!-- 📊 Stats Section -->
+      <div class="row row-cols-3 g-2 mt-2">
+        <div><div class="bg-light border text-center py-2 rounded shadow-sm h-100"><div class="fw-bold small">TOTAL</div><div class="fw-bold text-primary">{{ stats.total }}</div></div></div>
+        <div><div class="bg-light border text-center py-2 rounded shadow-sm h-100"><div class="fw-bold small">REPORTED</div><div class="fw-bold text-success">{{ stats.reported }}</div></div></div>
+        <div><div class="bg-light border text-center py-2 rounded shadow-sm h-100"><div class="fw-bold small">PENDING</div><div class="fw-bold text-danger">{{ stats.pending }}</div></div></div>
+      </div>
     </fieldset>
   </div>
 </div>
 
-<!-- 📤 Export Buttons Positioned Above Table -->
+<!-- 📤 Export Buttons -->
 <div class="d-flex justify-content-end gap-2 mb-2">
   <a href="{{ url_for('appointment_bp.export_appointments', file_format='csv') }}" class="btn btn-outline-primary btn-sm">CSV</a>
   <a href="{{ url_for('appointment_bp.export_appointments', file_format='excel') }}" class="btn btn-outline-success btn-sm">Excel</a>
@@ -164,12 +180,23 @@
     </form>
   </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
 <script>
   document.addEventListener("DOMContentLoaded", function () {
+    // Live Clock
+    function updateClock() {
+      const now = new Date();
+      const options = { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' };
+      const timeString = now.toLocaleTimeString('en-IN');
+      const dateString = now.toLocaleDateString('en-IN', options);
+      document.getElementById("liveClock").textContent = dateString + " | " + timeString;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Update Modal Fill
     document.querySelectorAll(".btn-update").forEach(button => {
       button.addEventListener("click", function () {
         document.getElementById("update_index").value = this.dataset.index;

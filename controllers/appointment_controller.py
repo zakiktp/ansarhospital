@@ -21,7 +21,6 @@ if not creds_json:
 info = json.loads(creds_json)
 credentials = Credentials.from_service_account_info(info, scopes=scope)
 
-
 appointment_bp = Blueprint('appointment_bp', __name__, url_prefix='/appointment')
 EXPORT_DIR = r"G:\\My Drive\\Ansar Hospital\\Export"
 os.makedirs(EXPORT_DIR, exist_ok=True)
@@ -188,7 +187,8 @@ def appointment_main():
                     "hf_name": hf_name,
                     "address": address,
                     "staff": staff,
-                    "number": appointment_no
+                    "number": appointment_no,
+                    "timestamp": timestamp  # ✅ Pass the actual IST timestamp to email
                 }
                 send_mail(
                     to_email=os.getenv("EMAIL_RECEIVER", "zakiup@gmail.com"),
@@ -229,12 +229,33 @@ def appointment_main():
                     filtered.append(row)
 
             address_list = sorted(set(r.strip() for r in dropdown_sheet.col_values(1) if r.strip()))
-            return render_template('appointment.html', user=session['user'], access=session['user']['access'], modules=MODULES, address_list=address_list, records=filtered, selected_address=selected_address, selected_status=selected_status)
+            total = len(filtered)
+            reported = len([r for r in filtered if r.get('Status', '').strip().upper() == 'REPORTED'])
+            pending = len([r for r in filtered if r.get('Status', '').strip().upper() == 'NOT REPORTED'])
 
-    today = datetime.now().strftime('%d/%m/%Y')
+            stats = {
+                'total': total,
+                'reported': reported,
+                'pending': pending
+            }
+
+            return render_template(
+                'appointment.html',
+                user=session['user'],
+                access=session['user']['access'],
+                modules=MODULES,
+                address_list=address_list,
+                records=filtered,
+                selected_address=selected_address,
+                selected_status=selected_status,
+                stats=stats
+            )
+
+    # ✅ Use date from get_local_timestamp for accurate filtering
+    today = get_local_timestamp().split(',')[0]
     records = []
     for i, row in enumerate(all_records, start=2):
-        if row.get('Date', '').startswith(today):
+        if row.get('Date', '').split(',')[0].strip() == today:
             row['SheetRowIndex'] = i
             records.append(row)
     if not records:
@@ -242,5 +263,25 @@ def appointment_main():
             row['SheetRowIndex'] = i
             records.append(row)
 
+    total = len(records)
+    reported = len([r for r in records if r.get('Status', '').strip().upper() == 'REPORTED'])
+    pending = len([r for r in records if r.get('Status', '').strip().upper() == 'NOT REPORTED'])
+
+    stats = {
+        'total': total,
+        'reported': reported,
+        'pending': pending
+    }
+
     address_list = sorted(set(r.strip() for r in dropdown_sheet.col_values(1) if r.strip()))
-    return render_template('appointment.html', user=session['user'], access=session['user']['access'], modules=MODULES, address_list=address_list, records=records, selected_address=selected_address, selected_status=selected_status)
+    return render_template(
+        'appointment.html',
+        user=session['user'],
+        access=session['user']['access'],
+        modules=MODULES,
+        address_list=address_list,
+        records=records,
+        selected_address=selected_address,
+        selected_status=selected_status,
+        stats=stats
+    )
