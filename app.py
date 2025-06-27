@@ -17,15 +17,13 @@ print("📂 Current Working Directory:", os.getcwd())
 print("📄 .env file exists here:", os.path.exists(".env"))
 
 
-# 🔧 Force override environment values (bypass Windows-level ones)
-os.environ["SENDGRID_API_KEY"] = os.getenv("SENDGRID_API_KEY")
-os.environ["EMAIL_SENDER"] = os.getenv("EMAIL_SENDER")
-os.environ["EMAIL_SENDER_NAME"] = os.getenv("EMAIL_SENDER_NAME")
+for key in ["SENDGRID_API_KEY", "EMAIL_SENDER", "EMAIL_SENDER_NAME"]:
+    value = os.getenv(key)
+    if value:
+        os.environ[key] = value
+    else:
+        print(f"⚠️ WARNING: {key} is not set in environment variables.")
 
-# Optional Debug
-print("✅ Overridden:")
-print("SENDGRID_API_KEY =", os.environ.get("SENDGRID_API_KEY")[:10], "...")
-print("EMAIL_SENDER =", os.environ.get("EMAIL_SENDER"))
 
 # 🌱 Load environment variables
 load_dotenv("D:/Projects/ansarhospital/src/.env")
