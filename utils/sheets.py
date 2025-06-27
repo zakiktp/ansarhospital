@@ -1,29 +1,30 @@
 import os
 import time
+import json
 from datetime import datetime
 from dotenv import load_dotenv
 import gspread
 from gspread.exceptions import APIError
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 
-# Load environment variables
+# Load .env locally if running outside Render
 load_dotenv()
 
-# Define scopes and credentials
+# Define scopes
 scope = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
 
-# Build credentials path
-base_dir = os.path.dirname(os.path.abspath(__file__))
-cred_path = os.path.abspath(os.path.join(base_dir, '..', '..', 'credentials', 'credentials.json'))
+# 🌐 Load credentials from environment variable (minified JSON)
+google_creds_json = os.getenv("GOOGLE_CREDS_JSON")
+if not google_creds_json:
+    raise EnvironmentError("❌ GOOGLE_CREDS_JSON not found in environment variables.")
 
-if not os.path.exists(cred_path):
-    raise FileNotFoundError(f"Google credentials file not found at: {cred_path}")
+creds_dict = json.loads(google_creds_json)
+creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
 
 # Authorize client
-creds = ServiceAccountCredentials.from_json_keyfile_name(cred_path, scope)
 client = gspread.authorize(creds)
 
 # Load spreadsheet
@@ -41,7 +42,7 @@ for attempt in range(3):
         else:
             raise
 
-# Default worksheet (used by count utility)
+# Default worksheet
 worksheet = spreadsheet.worksheet("Appointment")
 
 
