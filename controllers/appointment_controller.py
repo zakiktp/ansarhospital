@@ -7,16 +7,20 @@ import pytz
 import os
 import pandas as pd
 from fpdf import FPDF
+import json
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
-print("Import successful")
-
-# Setup Google credentials
+# Setup Google credentials from env variable
 scope = ['https://www.googleapis.com/auth/drive']
-credentials = Credentials.from_service_account_file(
-    r"D:\\Projects\\ansarhospital\\credentials\\credentials.json", scopes=scope
-)
+creds_json = os.environ.get("GOOGLE_CREDS_JSON")
+
+if not creds_json:
+    raise EnvironmentError("❌ GOOGLE_CREDS_JSON is not set in environment variables.")
+
+info = json.loads(creds_json)
+credentials = Credentials.from_service_account_info(info, scopes=scope)
+
 
 appointment_bp = Blueprint('appointment_bp', __name__, url_prefix='/appointment')
 EXPORT_DIR = r"G:\\My Drive\\Ansar Hospital\\Export"
