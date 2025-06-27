@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Ansar Hospital{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      background-color: #f8f9fa;
+    }
+
+    .layout-wrapper {
+      display: flex;
+      min-height: 100vh;
+      width: 100%;
+    }
+
+    .sidebar {
+      width: 260px;
+      background-color: #f8f9fa;
+      border-right: 1px solid #dee2e6;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-logo {
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .sidebar-logo img {
+      width: 100px;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+    }
+
+    .nav-buttons {
+      flex-grow: 1;
+      padding: 1rem;
+    }
+
+    .nav-buttons a {
+      display: block;
+      margin: 0.5rem 0;
+      padding: 0.6rem 1rem;
+      border-radius: 5px;
+      color: #333;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .nav-buttons a:hover,
+    .nav-buttons a.active {
+      background-color: #0d6efd;
+      color: #fff;
+    }
+
+    main.container-fluid {
+      padding: 2rem;
+      flex-grow: 1;
+      overflow-y: auto;
+      background-color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout-wrapper">
+    {% if request.endpoint not in ['general_login', 'auth_utils_bp.forgot_password'] %}
+      <div class="sidebar">
+        <div class="sidebar-logo">
+          <img src="{{ url_for('static', filename='images/logo_clinic.png') }}" alt="Clinic Logo">
+          <h5 class="mt-2 mb-0">Ansar Hospital</h5>
+        </div>
+        <div class="nav-buttons">
+          <a href="{{ url_for('module_login', module='appointment') }}">🗓️ Appointment</a>
+          <a href="{{ url_for('module_login', module='attendance') }}">🕒 Attendance</a>
+          <a href="{{ url_for('module_login', module='opd') }}">🏥 OPD</a>
+          <a href="{{ url_for('module_login', module='discharge') }}">📤 Discharge</a>
+          <a href="{{ url_for('module_login', module='birthcertificate') }}">📄 Birth Certificate</a>
+        </div>
+      </div>
+    {% endif %}
+
+    <main class="container-fluid">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <!-- 📦 Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- 🔁 Page-specific JS (e.g. update modal handler) -->
+  {% block scripts %}{% endblock %}
+</body>
+</html>

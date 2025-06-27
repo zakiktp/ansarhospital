@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Appointment{% endblock %}
+
+{% block content %}
+<h4 class="mb-3 fw-bold text-primary">📅 Appointment Dashboard</h4>
+
+<!-- 🧭 Top Navigation -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h6 class="mb-0 text-muted">Appointment Module</h6>
+  <a href="{{ url_for('auth_utils_bp.logout') }}" class="btn btn-outline-danger btn-sm">Logout</a>
+</div>
+
+<div class="row g-3 mb-3">
+
+  <!-- 📝 New Appointment Form (Placed First) -->
+  <div class="col-md-6">
+    <fieldset class="border p-3 rounded shadow-sm" style="background-color: #fff9e6;">
+      <legend class="w-auto px-2 fw-semibold text-warning">📝 New Appointment</legend>
+      <form method="POST" autocomplete="off">
+        <div class="row g-2">
+          <div class="col-6"><input type="text" name="name" required class="form-control text-uppercase" placeholder="Name"></div>
+          <div class="col-6"><input type="text" name="hf_name" required class="form-control text-uppercase" placeholder="H/F Name"></div>
+          <div class="col-6">
+            <input type="text" name="mobile" maxlength="10" pattern="[0-9]{10}" title="Enter exactly 10 digits" inputmode="numeric" required class="form-control" placeholder="Mobile" oninput="this.value = this.value.replace(/\D/g, '')">
+          </div>
+          <div class="col-6">
+            <input type="text" class="form-control" value="{{ user.name }}" disabled placeholder="Staff">
+          </div>
+          <div class="col-6">
+            <select name="status" class="form-select">
+              <option value="REPORTED" {% if selected_status == 'REPORTED' %}selected{% endif %}>REPORTED</option>
+              <option value="NOT REPORTED" {% if selected_status == 'NOT REPORTED' %}selected{% endif %}>NOT REPORTED</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <select name="address" id="address" class="form-select" required>
+              {% for addr in address_list if addr != 'OTHER' %}
+              <option value="{{ addr }}" {% if addr == selected_address %}selected{% endif %}>{{ addr }}</option>
+              {% endfor %}
+              <option value="OTHER" {% if selected_address == 'OTHER' %}selected{% endif %}>OTHER</option>
+            </select>
+          </div>
+          <div class="col-12 {% if selected_address != 'OTHER' %}d-none{% endif %}" id="otherAddressDiv">
+            <input type="text" name="other_address" class="form-control text-uppercase" placeholder="Other Address">
+          </div>
+        </div>
+        <div class="row mt-3">
+          <div class="col d-flex gap-2 justify-content-between">
+            <button type="submit" name="save" class="btn btn-success btn-sm w-100">Save</button>
+            <button type="reset" class="btn btn-secondary btn-sm w-100">Reset</button>
+            <a href="{{ url_for('index') }}" class="btn btn-danger btn-sm w-100">Exit</a>
+          </div>
+        </div>
+      </form>
+    </fieldset>
+  </div>
+
+  <!-- 🔍 Search Form -->
+  <div class="col-md-6">
+    <fieldset class="border p-3 rounded shadow-sm" style="background-color: #e6f2ff;">
+      <legend class="w-auto px-2 fw-semibold text-primary">🔍 Search Appointment</legend>
+      <form method="POST" class="mb-0">
+        <input type="hidden" name="search" value="1">
+        <div class="row g-2">
+          <div class="col-6"><input type="text" name="search_name" class="form-control form-control-sm" placeholder="Name" value="{{ request.form.get('search_name', '') }}"></div>
+          <div class="col-6"><input type="text" name="search_mobile" class="form-control form-control-sm" placeholder="Mobile" value="{{ request.form.get('search_mobile', '') }}"></div>
+          <div class="col-6"><input type="text" name="search_address" class="form-control form-control-sm" placeholder="Address" value="{{ request.form.get('search_address', '') }}"></div>
+          <div class="col-6"><input type="date" name="start_date" class="form-control form-control-sm" value="{{ request.form.get('start_date', '') }}"></div>
+          <div class="col-6"><input type="date" name="end_date" class="form-control form-control-sm" value="{{ request.form.get('end_date', '') }}"></div>
+          <div class="col-6 d-flex gap-2">
+            <button type="submit" class="btn btn-sm btn-info w-100">Search</button>
+            <a href="{{ url_for('appointment_bp.appointment_main') }}" class="btn btn-sm btn-outline-dark w-100">Clear</a>
+          </div>
+        </div>
+      </form>
+    </fieldset>
+  </div>
+</div>
+
+<!-- 📤 Export Buttons Positioned Above Table -->
+<div class="d-flex justify-content-end gap-2 mb-2">
+  <a href="{{ url_for('appointment_bp.export_appointments', file_format='csv') }}" class="btn btn-outline-primary btn-sm">CSV</a>
+  <a href="{{ url_for('appointment_bp.export_appointments', file_format='excel') }}" class="btn btn-outline-success btn-sm">Excel</a>
+  <a href="{{ url_for('appointment_bp.export_appointments', file_format='pdf') }}" class="btn btn-outline-danger btn-sm">PDF</a>
+  <a href="{{ url_for('appointment_bp.export_appointments', file_format='google') }}" class="btn btn-outline-dark btn-sm">Google Sheet</a>
+</div>
+
+<!-- 📋 Appointment Records Table -->
+<div class="section-bg">
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped table-sm align-middle">
+      <thead class="table-light">
+        <tr>
+          <th class="text-center">No</th>
+          <th class="text-center">Date</th>
+          <th>Name</th>
+          <th>H/F Name</th>
+          <th>Address</th>
+          <th class="text-center">Mobile</th>
+          <th class="text-center">Staff</th>
+          <th class="text-center">Status</th>
+          <th class="text-center">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if records %}
+        {% for row in records %}
+        <tr>
+          <td class="text-center">{{ loop.index }}</td>
+          <td class="text-center">{{ row['Date'] }}</td>
+          <td>{{ row['Name'] }}</td>
+          <td>{{ row['H/F Name'] }}</td>
+          <td>{{ row['Address'] }}</td>
+          <td class="text-center">{{ row['Mobile'] }}</td>
+          <td class="text-center">{{ row['Staff'] }}</td>
+          <td class="text-center">{{ row['Status'] }}</td>
+          <td class="text-center">
+            <button type="button" class="btn btn-success btn-sm btn-update"
+              data-index="{{ row['SheetRowIndex'] }}"
+              data-name="{{ row.get('Name', '') }}"
+              data-hf="{{ row.get('H/F Name', '') }}"
+              data-address="{{ row.get('Address', '') }}"
+              data-mobile="{{ row.get('Mobile', '') }}"
+              data-status="{{ row.get('Status', '') }}">
+              Update
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr><td colspan="9" class="text-center text-muted">No appointments found.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 🔄 Update Modal -->
+<div class="modal fade" id="updateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <form method="POST" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Update Appointment</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="action" value="update">
+        <input type="hidden" id="update_index" name="record_index">
+        <div class="col-6"><input type="text" name="update_name" id="update_name" class="form-control text-uppercase" required placeholder="Name"></div>
+        <div class="col-6"><input type="text" name="update_hf_name" id="update_hf_name" class="form-control text-uppercase" required placeholder="H/F Name"></div>
+        <div class="col-6"><input type="text" name="update_address" id="update_address" class="form-control text-uppercase" required placeholder="Address"></div>
+        <div class="col-6"><input type="text" name="update_mobile" id="update_mobile" class="form-control" maxlength="10" pattern="[0-9]{10}" required title="Enter 10 digits" inputmode="numeric"></div>
+        <div class="col-6">
+          <select name="update_status" id="update_status" class="form-select">
+            <option value="REPORTED">REPORTED</option>
+            <option value="NOT REPORTED">NOT REPORTED</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".btn-update").forEach(button => {
+      button.addEventListener("click", function () {
+        document.getElementById("update_index").value = this.dataset.index;
+        document.getElementById("update_name").value = this.dataset.name;
+        document.getElementById("update_hf_name").value = this.dataset.hf;
+        document.getElementById("update_address").value = this.dataset.address;
+        document.getElementById("update_mobile").value = this.dataset.mobile;
+        document.getElementById("update_status").value = this.dataset.status || 'NOT REPORTED';
+        new bootstrap.Modal(document.getElementById("updateModal")).show();
+      });
+    });
+  });
+</script>
+{% endblock %}

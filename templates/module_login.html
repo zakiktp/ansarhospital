@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<h4 class="mb-3">Login Required for {{ module|capitalize }}</h4>
+<form method="POST">
+  <input type="text" name="username" class="form-control mb-2" placeholder="Username" required>
+  <input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
+  <button type="submit" class="btn btn-primary">Login</button>
+</form>
+{% endblock %}

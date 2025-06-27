@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+      {{ messages[0] }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  {% endif %}
+{% endwith %}
+
+<!-- Welcome Card -->
+<div class="card p-4 mb-4">
+  <div class="d-flex justify-content-between align-items-center flex-wrap">
+    <div>
+      <h3 class="mb-2">Welcome, {{ user.name }} 👋</h3>
+      <p>
+        <strong>Role:</strong> {{ user.role }} |
+        <strong>Access:</strong> {{ access }} |
+        <strong>Today's Appointments:</strong> {{ today_count or 0 }}
+      </p>
+    </div>
+    <div>
+      <img src="{{ url_for('static', filename='images/clinic.png') }}"
+           class="img-fluid"
+           style="max-height: 100px; border-radius: 12px;"
+           alt="Clinic">
+    </div>
+  </div>
+</div>
+
+<!-- Module Cards -->
+<div class="row g-4 mb-5">
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body d-flex align-items-center">
+        <div class="me-3">
+          <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+               style="width: 60px; height: 60px; font-size: 1.5rem;">
+            🗓️
+          </div>
+        </div>
+        <div>
+          <h5 class="card-title mb-1">Appointments</h5>
+          <p class="text-muted small mb-1">Manage patient appointments efficiently</p>
+          <a href="{{ url_for('appointment_bp.appointment_main') }}"
+             class="btn btn-sm btn-outline-primary">Open</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body d-flex align-items-center">
+        <div class="me-3">
+          <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center"
+               style="width: 60px; height: 60px; font-size: 1.5rem;">
+            📋
+          </div>
+        </div>
+        <div>
+          <h5 class="card-title mb-1">Staff Presence</h5>
+          <p class="text-muted small mb-1">Track daily attendance and availability</p>
+          <a href="#" class="btn btn-sm btn-outline-success">View</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Doctor Row -->
+<h4 class="text-center mt-5 mb-4">Our Doctors</h4>
+<div class="row text-center">
+  {% for person in [
+    {'img': 'zaki.jpg', 'name': 'Dr.M.Zaki Ansari', 'degree': 'B.U.M.S. (Aligarh)', 'reg': 'Regd.No. 6442'},
+    {'img': 'nishat.jpg', 'name': 'Dr.Mrs.Nishat Ansari', 'degree': 'B.U.M.S. (Mumbai)', 'reg': 'Regd.No. 6862'},
+    {'img': 'affan.jpg', 'name': 'Dr.M.Affan Zaki Ansari', 'degree': 'M.B.B.S.,M.D.(Std.)', 'reg': 'Regd.No. 92441'},
+    {'img': 'shanaz.jpg', 'name': 'Dr.Shanaz', 'degree': 'M.B.B.S.,M.D.(Std.)', 'reg': 'Regd.No. 112440'}
+  ] %}
+    <div class="col-6 col-md-3 mb-4">
+      <img src="{{ url_for('static', filename='images/' + person.img) }}"
+           class="img-fluid person-img"
+           alt="{{ person.name }}"
+           style="height: 150px; object-fit: cover; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">
+      <p class="person-info" style="font-size: 12px; line-height: 1.2;">
+        <strong>{{ person.name }}</strong><br>
+        {{ person.degree }}<br>
+        {{ person.reg }}
+      </p>
+
+    </div>
+  {% endfor %}
+</div>
+
+<!-- Labels Row -->
+<div class="row text-center mb-2">
+  <div class="col-6 col-md-3"><strong>Dedicated to</strong></div>
+  <div class="col-6 col-md-9"><strong>Thanks for Co-operation and Guidance</strong></div>
+</div>
+
+<!-- Tribute Row -->
+<div class="row text-center">
+  {% for person in [
+    {'img': 'zainab.jpg', 'name': 'Zainab', 'degree': 'Beloved Granddaughter', 'reg': ''},
+    {'img': 'adil.jpg', 'name': 'M.Adil Zaki Ansari', 'degree': 'MS, Software Engg.', 'reg': 'California, US'},
+    {'img': 'humra.jpg', 'name': 'Mrs.Humra Ahsan', 'degree': 'MS, Software Engg.', 'reg': 'California, US'},
+    {'img': 'saud.jpg', 'name': 'Dr.Saud Ahsan', 'degree': 'MBBS, MD, Cardiologist', 'reg': 'LA, US'}
+  ] %}
+    <div class="col-6 col-md-3 mb-4">
+      <img src="{{ url_for('static', filename='images/' + person.img) }}"
+           class="img-fluid person-img"
+           alt="{{ person.name }}"
+           style="height: 150px; object-fit: cover; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">
+      <p class="person-info" style="font-size: 12px; line-height: 1.2;">
+        <strong>{{ person.name }}</strong><br>
+        {{ person.degree }}<br>
+        {{ person.reg }}
+      </p>
+
+    </div>
+  {% endfor %}
+</div>
+
+{% endblock %}

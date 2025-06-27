@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Welcome{% endblock %}
+{% block content %}
+
+<div class="card p-4 mb-4">
+  <div class="d-flex justify-content-between align-items-center flex-wrap">
+    <div>
+      <h3 class="mb-2">
+        {% if user %}Welcome, {{ user.name }}{% else %}Welcome to Ansar Polyclinic{% endif %}
+      </h3>
+      {% if user %}
+        <p><strong>Role:</strong> {{ user.role }}</p>
+        <p><strong>Access:</strong> {{ access }}</p>
+      {% endif %}
+      <p><strong>Today's Appointments:</strong> {{ today_count }}</p>
+    </div>
+    <div>
+      <img src="{{ url_for('static', filename='images/Clinic.png') }}" class="img-fluid" style="max-height: 80px;" alt="Clinic">
+    </div>
+  </div>
+</div>
+
+<h5 class="section-label">Meet Our Doctors</h5>
+<div class="row text-center mb-4">
+  {% for person in [
+    {'img': 'zaki.jpg', 'name': 'Dr. M. Zaki Ansari', 'degree': 'B.U.M.S. (Aligarh)', 'reg': 'Regd.No. 6442'},
+    {'img': 'nishat.jpg', 'name': 'Dr. Mrs. Nishat Ansari', 'degree': 'B.U.M.S. (Mumbai)', 'reg': 'Regd.No. 6862'},
+    {'img': 'affan.jpg', 'name': 'Dr. M. Affan Zaki Ansari', 'degree': 'M.B.B.S., M.D.', 'reg': 'Regd.No. 92441'},
+    {'img': 'shanaz.jpg', 'name': 'Dr. Shanaz', 'degree': 'M.B.B.S., M.D.', 'reg': 'Regd.No. 112440'}
+  ] %}
+    <div class="col-6 col-md-3 mb-4">
+      <img src="{{ url_for('static', filename='images/' + person.img) }}" class="img-fluid person-img" alt="{{ person.name }}">
+      <p class="person-info"><strong>{{ person.name }}</strong><br>{{ person.degree }}<br>{{ person.reg }}</p>
+    </div>
+  {% endfor %}
+</div>
+
+<h5 class="section-label">Tributes</h5>
+<div class="row text-center">
+  {% for person in [
+    {'img': 'zainab.jpg', 'name': 'Zainab', 'degree': 'Beloved Granddaughter'},
+    {'img': 'adil.jpg', 'name': 'M. Adil Ansari', 'degree': 'Software Engineer, MS'},
+    {'img': 'humra.jpg', 'name': 'Mrs. Humra Ahsan', 'degree': 'MS, Software Engg.'},
+    {'img': 'saud.jpg', 'name': 'Dr. Saud Ahsan', 'degree': 'MBBS, MD, Cardiologist'}
+  ] %}
+    <div class="col-6 col-md-3 mb-4">
+      <img src="{{ url_for('static', filename='images/' + person.img) }}" class="img-fluid person-img" alt="{{ person.name }}">
+      <p class="person-info"><strong>{{ person.name }}</strong><br>{{ person.degree }}</p>
+    </div>
+  {% endfor %}
+</div>
+
+{% endblock %}
