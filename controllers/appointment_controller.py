@@ -207,6 +207,7 @@ def appointment_main():
             start = form.get('start_date')
             end = form.get('end_date')
             filtered = []
+
             for i, row in enumerate(all_records, start=2):
                 match = True
                 if name_q and name_q not in str(row.get('Name', '')).lower():
@@ -215,18 +216,34 @@ def appointment_main():
                     match = False
                 if address_q and address_q not in str(row.get('Address', '')).lower():
                     match = False
+
                 if start or end:
                     try:
-                        row_date = datetime.strptime(str(row.get('Date', '')).split(',')[0], '%d/%m/%Y')
-                        if start and row_date < datetime.strptime(start, '%Y-%m-%d'):
-                            match = False
-                        if end and row_date > datetime.strptime(end, '%Y-%m-%d'):
-                            match = False
-                    except:
+                        raw_date = row.get('Date', '').strip()
+
+                        # Replace colon if accidentally used instead of comma
+                        if ':' in raw_date and ',' not in raw_date:
+                            raw_date = raw_date.replace(':', ',', 1)
+
+                            row_date_str = raw_date.split(',')[0].strip()
+                            row_date = datetime.strptime(row_date_str, '%d/%m/%Y').date()
+
+                        if start:
+                            start_date = datetime.strptime(start, '%Y-%m-%d').date()
+                            if row_date < start_date:
+                                match = False
+                        if end:
+                            end_date = datetime.strptime(end, '%Y-%m-%d').date()
+                            if row_date > end_date:
+                                match = False
+                    except Exception as e:
+                        print(f"⚠️ Date parsing error in row {i}: raw_date='{row.get('Date', '')}' → {e}")
                         match = False
+
                 if match:
                     row['SheetRowIndex'] = i
                     filtered.append(row)
+
 
             address_list = sorted(set(r.strip() for r in dropdown_sheet.col_values(1) if r.strip()))
             total = len(filtered)
