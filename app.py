@@ -1,21 +1,34 @@
+# ✅ STEP 1: Load .env BEFORE importing anything that uses it
 import os
-import pytz
-from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, session, flash
 from dotenv import load_dotenv
+from pathlib import Path
+from utils.env_loader import *  # This loads and validates env variables
+
+env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
+# Debug check
+print("✅ Loaded .env from:", env_path)
+print("🔐 CREDENTIALS_PATH =", os.getenv("CREDENTIALS_PATH"))
+
+# ✅ STEP 2: Now safe to import things that depend on env
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+from services.user_service import get_user_by_username  # now this works
 from utils.sheets import worksheet
 from config import spreadsheet, MODULES
 from controllers.appointment_controller import appointment_bp
 from utils.auth_utils import auth_utils_bp, access_required
 import pandas as pd
-from pathlib import Path
+import pytz
+from datetime import datetime
 
-# Load from .env explicitly
-load_dotenv(dotenv_path=Path('.') / '.env')
+# Now your environment variables are available globally
+CREDENTIALS_PATH = os.getenv("CREDENTIALS_PATH")
 
+import gspread
+gc = gspread.service_account(filename=CREDENTIALS_PATH)
 print("📂 Current Working Directory:", os.getcwd())
 print("📄 .env file exists here:", os.path.exists(".env"))
-
 
 for key in ["SENDGRID_API_KEY", "EMAIL_SENDER", "EMAIL_SENDER_NAME"]:
     value = os.getenv(key)
@@ -24,26 +37,21 @@ for key in ["SENDGRID_API_KEY", "EMAIL_SENDER", "EMAIL_SENDER_NAME"]:
     else:
         print(f"⚠️ WARNING: {key} is not set in environment variables.")
 
-
-# 🌱 Load environment variables
-load_dotenv("D:/Projects/ansarhospital/src/.env")
-
-
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'fallback-key')
 
-# 🕒 Utility: today's appointment count
+# Utility: today's appointment count
 def get_today_appointment_count():
     today = datetime.now(pytz.timezone("Asia/Kolkata")).strftime('%d/%m/%Y')
     all_records = worksheet.get_all_records()
-    return sum(1 for row in all_records if row.get('Date') == today)  # Make sure the column is exactly 'Date'
+    return sum(1 for row in all_records if row.get('Date') == today)
 
-# 🧭 Local time
+# Local time for logging
 def get_local_timestamp():
     india = pytz.timezone("Asia/Kolkata")
     return datetime.now(india).strftime('%d/%m/%Y %H:%M:%S')
 
-# 🏠 Routes
+# Root route
 @app.route('/')
 def index():
     return redirect(url_for('dashboard'))
@@ -54,7 +62,7 @@ def dashboard():
     today_count = get_today_appointment_count()
     return render_template('dashboard.html', user=user, today_count=today_count)
 
-# 🔐 Login per module
+# Login per module
 @app.route('/auth/<module>', methods=['GET', 'POST'])
 def module_login(module):
     login_sheet = spreadsheet.worksheet("Login")
@@ -84,12 +92,12 @@ def module_login(module):
 
     return render_template('login.html', module=module)
 
-# 🔍 Credential utility
+# Credential utility
 def get_user_credentials(sheet):
     data = sheet.get_all_records()
     return {row['User']: row for row in data}
 
-# 🛠 Legacy login (optional, now unified)
+# Optional legacy login
 @app.route('/log', methods=['GET', 'POST'])
 def general_login():
     module = request.args.get('module', 'appointment')
@@ -110,25 +118,26 @@ def general_login():
                 'access': ['all']
             }
             flash("✅ Login successful.")
-            print(url_for('auth_utils_bp.forgot_password'))
             return redirect(url_for('appointment_main'))
         else:
             flash("❌ Invalid credentials.", 'danger')
 
     return render_template("login.html", module=module)
 
-# 🚪 Logout route
 @app.route('/logout')
 def logout():
     session.clear()
     flash("You have been logged out.")
     return redirect(url_for('index'))
 
-# 📦 Register Blueprints
+from utils.forgot_password import forgot_password_bp
+
+# Register Blueprints
 app.register_blueprint(appointment_bp)
 app.register_blueprint(auth_utils_bp)
+app.register_blueprint(forgot_password_bp)
 
-# 🌐 Jinja globals
+# Jinja globals
 app.jinja_env.globals.update(MODULES=MODULES)
 app.jinja_env.globals.update(current_year=datetime.now().year)
 

@@ -1,0 +1,14 @@
+{% extends "auth_base.html" %}
+{% block title %}Request OTP – Ansar Hospital{% endblock %}
+{% block content %}
+<h5 class="mb-3">Request OTP to Reset Password</h5>
+<form method="POST">
+  <div class="mb-3">
+    <label class="form-label">Username or Email</label>
+    <input type="text" name="identifier" class="form-control" required>
+  </div>
+  <div class="d-grid">
+    <button type="submit" class="btn btn-primary">Send OTP</button>
+  </div>
+</form>
+{% endblock %}

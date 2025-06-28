@@ -1,0 +1,20 @@
+{% extends "auth_base.html" %}
+{% block title %}Reset Password – Ansar Hospital{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">🔑 Set New Password</h5>
+
+<form method="POST">
+  <div class="mb-3">
+    <label class="form-label">New Password</label>
+    <input type="password" name="new_password" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Confirm Password</label>
+    <input type="password" name="confirm_password" class="form-control" required>
+  </div>
+  <div class="d-grid">
+    <button type="submit" class="btn btn-primary">🔄 Reset Password</button>
+  </div>
+</form>
+{% endblock %}
