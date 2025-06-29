@@ -5,10 +5,11 @@ from pathlib import Path
 # Load .env from the project root
 dotenv_path = Path(__file__).resolve().parents[1] / '.env'
 
-if load_dotenv(dotenv_path):
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path)
     print(f"✅ Loaded .env from: {dotenv_path}")
 else:
-    raise EnvironmentError(f"❌ .env file not found at {dotenv_path}")
+    print(f"⚠️ .env not found at {dotenv_path}. Assuming environment variables are set in the hosting environment.")
 
 # List of required keys
 REQUIRED_KEYS = [
@@ -22,7 +23,7 @@ REQUIRED_KEYS = [
 for key in REQUIRED_KEYS:
     value = os.getenv(key)
     if not value or value.strip() == "":
-        raise EnvironmentError(f"❌ Missing or empty {key} in .env")
+        raise EnvironmentError(f"❌ Missing or empty {key} in environment variables")
     if key == "SENDGRID_API_KEY" and not value.startswith("SG."):
         raise EnvironmentError(f"❌ {key} does not appear to be a valid SendGrid key")
     print(f"🔐 {key} = {value}")
