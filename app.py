@@ -4,21 +4,37 @@ from pathlib import Path
 import os
 import pytz
 import gspread
+import base64
+import json
 from datetime import datetime
 import pandas as pd
+from google.oauth2.service_account import Credentials
 
-print("✅ appointment_api.py is loaded and executing")
-
+print("✅ app.py is loaded and executing")
 
 # Load .env before anything else
 env_path = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
-# Google credentials
-CREDENTIALS_PATH = os.getenv("CREDENTIALS_PATH")
-gc = gspread.service_account(filename=CREDENTIALS_PATH)
+# Google credentials from JSON or Base64
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
 
-# Environment-dependent imports
+if os.getenv("GOOGLE_CREDS_JSON"):
+    creds_info = json.loads(os.getenv("GOOGLE_CREDS_JSON"))
+elif os.getenv("GOOGLE_CREDENTIALS_B64"):
+    creds_json = base64.b64decode(os.getenv("GOOGLE_CREDENTIALS_B64")).decode("utf-8")
+    creds_info = json.loads(creds_json)
+else:
+    raise RuntimeError("❌ Google credentials not found in environment variables.")
+
+# Authorize with gspread
+credentials = Credentials.from_service_account_info(creds_info, scopes=SCOPES)
+gc = gspread.authorize(credentials)
+
+# Imports that depend on Google auth
 from config import spreadsheet, MODULES
 from utils.sheet_utils import worksheet
 from services.user_service import get_user_by_username
@@ -30,7 +46,6 @@ from controllers.auth_controller import auth_bp
 from controllers.appointment_controller import appointment_bp
 from controllers.opd_controller import opd_bp
 from controllers.patients_controller import patients_bp
-
 
 # Blueprints from routes
 from routes.attendance_routes import attendance_bp
@@ -66,7 +81,7 @@ def dashboard():
 def success():
     return "<h3>✅ OPD entry submitted successfully!</h3><a href='/opd'>← Back to OPD form</a>"
 
-# Register Blueprints (only once)
+# Register Blueprints
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(appointment_bp)
 app.register_blueprint(attendance_bp)
@@ -80,8 +95,6 @@ app.register_blueprint(patient_api_bp)
 
 from routes.appointment_api import appointment_api_bp
 app.register_blueprint(appointment_api_bp)
-
-
 
 # Jinja Contexts
 app.jinja_env.globals.update(MODULES=MODULES)
