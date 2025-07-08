@@ -1,29 +1,40 @@
 import os
 import json
 import gspread
+import base64
 from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 
 # ✅ Load .env for local dev
 load_dotenv()
 
-# ✅ Load credentials from environment variable
-creds_json = os.getenv("GOOGLE_CREDS_JSON")
-if not creds_json:
-    raise EnvironmentError("❌ GOOGLE_CREDS_JSON not found in environment variables.")
-
-creds_dict = json.loads(creds_json)
-
-# ✅ Authorize Google Sheets access
-scope = [
+# ✅ Define Google scopes
+SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
-credentials = Credentials.from_service_account_info(creds_dict, scopes=scope)
+
+# ✅ Load credentials from JSON or Base64
+if os.getenv("GOOGLE_CREDS_JSON"):
+    creds_info = json.loads(os.getenv("GOOGLE_CREDS_JSON"))
+elif os.getenv("GOOGLE_CREDENTIALS_B64"):
+    decoded = os.getenv("GOOGLE_CREDENTIALS_B64")
+    creds_info = json.loads(
+        base64.b64decode(decoded).decode("utf-8")
+    )
+else:
+    raise EnvironmentError("❌ GOOGLE_CREDS_JSON or GOOGLE_CREDENTIALS_B64 is required.")
+
+# ✅ Authorize Google Sheets access
+credentials = Credentials.from_service_account_info(creds_info, scopes=SCOPES)
 gspread_client = gspread.authorize(credentials)
 
 # ✅ Open target spreadsheet using its ID from .env
-spreadsheet = gspread_client.open_by_key(os.getenv("SHEET_ID"))
+SPREADSHEET_ID = os.getenv("SHEET_ID")
+if not SPREADSHEET_ID:
+    raise EnvironmentError("❌ SHEET_ID is missing in environment variables.")
+
+spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
 
 # ✅ Define enabled modules for the sidebar/dashboard
 MODULES = [

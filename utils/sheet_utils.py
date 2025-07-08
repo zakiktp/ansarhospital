@@ -1,5 +1,6 @@
 import os
 import time
+import base64
 import json
 from datetime import datetime
 from dotenv import load_dotenv
@@ -17,12 +18,16 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-# Load credentials from environment variable (minified JSON)
-google_creds_json = os.getenv("GOOGLE_CREDS_JSON")
-if not google_creds_json:
-    raise EnvironmentError("GOOGLE_CREDS_JSON not found in environment variables.")
+# Load credentials from environment
+creds_dict = None
+if os.getenv("GOOGLE_CREDS_JSON"):
+    creds_dict = json.loads(os.getenv("GOOGLE_CREDS_JSON"))
+elif os.getenv("GOOGLE_CREDENTIALS_B64"):
+    creds_json = base64.b64decode(os.getenv("GOOGLE_CREDENTIALS_B64")).decode("utf-8")
+    creds_dict = json.loads(creds_json)
+else:
+    raise EnvironmentError("❌ Google credentials not found in environment variables.")
 
-creds_dict = json.loads(google_creds_json)
 creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
 
 # Service account file path for legacy functions
@@ -53,17 +58,16 @@ worksheet = spreadsheet.worksheet("Appointment")
 # -------------------- Basic Utilities --------------------
 
 def get_sheet_service():
-    credentials = Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE,
-        scopes=SCOPES
-    )
-    gc = gspread.authorize(credentials)
-    return gc
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+    return gspread.authorize(creds)
+
 
 def read_sheet_as_dict(spreadsheet_name, worksheet_name):
     gc = get_sheet_service()
     sheet = gc.open(spreadsheet_name).worksheet(worksheet_name)
     return sheet.get_all_records()
+
+
 
 def append_to_sheet(spreadsheet_name, worksheet_name, row_data):
     gc = get_sheet_service()
