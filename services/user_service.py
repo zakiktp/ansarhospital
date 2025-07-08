@@ -1,19 +1,32 @@
-import gspread
 import os
+import json
+import base64
 from datetime import datetime
-
 from dotenv import load_dotenv
+import gspread
+from google.oauth2.service_account import Credentials
+
+# Load .env
 load_dotenv()
 
-import os
-CREDENTIALS_PATH = os.getenv("CREDENTIALS_PATH")
+# Scopes for Google Sheets and Drive
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
 
-if not CREDENTIALS_PATH or not os.path.exists(CREDENTIALS_PATH):
-    raise FileNotFoundError(f"❌ CREDENTIALS_PATH is missing or invalid: {CREDENTIALS_PATH}")
+# Load credentials from environment
+if os.getenv("GOOGLE_CREDS_JSON"):
+    creds_info = json.loads(os.getenv("GOOGLE_CREDS_JSON"))
+elif os.getenv("GOOGLE_CREDENTIALS_B64"):
+    creds_json = base64.b64decode(os.getenv("GOOGLE_CREDENTIALS_B64")).decode("utf-8")
+    creds_info = json.loads(creds_json)
+else:
+    raise RuntimeError("❌ Google credentials not found in environment variables.")
 
-
-# Connect to Google Sheets
-gc = gspread.service_account(filename=CREDENTIALS_PATH)
+# Authorize client
+creds = Credentials.from_service_account_info(creds_info, scopes=SCOPES)
+gc = gspread.authorize(creds)
 sheet = gc.open("Database").worksheet("Login")
 
 # 🔍 Get user by email
@@ -66,17 +79,10 @@ def validate_otp(email, entered_otp):
 
     return otp == entered_otp and datetime.now() <= expiry_time
 
+# 🧍 Get full name of user
 def get_name_by_username(username):
-    import gspread
-    gc = gspread.service_account(filename="credentials.json")  # Adjust path if needed
-    sheet = gc.open("Database").worksheet("Login")  # 👈 Updated sheet name
-    rows = sheet.get_all_values()
-
-    header = rows[0]
-    user_index = header.index("User")
-    name_index = header.index("Name")
-
-    for row in rows[1:]:
-        if row[user_index].strip().lower() == username.strip().lower():
-            return row[name_index]
+    records = sheet.get_all_records()
+    for row in records:
+        if row.get("User", "").strip().lower() == username.strip().lower():
+            return row.get("Name", "STAFF")
     return "STAFF"
