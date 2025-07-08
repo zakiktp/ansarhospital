@@ -2,22 +2,21 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from datetime import datetime
 from config import spreadsheet, MODULES
 from utils.email_utils import send_mail
-from utils.auth_utils import access_required
+from utils.auth_utils import access_required, login_required
 import pytz
 import os
 import pandas as pd
-from fpdf import FPDF
 import json
+from fpdf import FPDF
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
-# Setup Google credentials from env variable
+
+# Setup Google credentials
 scope = ['https://www.googleapis.com/auth/drive']
 creds_json = os.environ.get("GOOGLE_CREDS_JSON")
-
 if not creds_json:
     raise EnvironmentError("❌ GOOGLE_CREDS_JSON is not set in environment variables.")
-
 info = json.loads(creds_json)
 credentials = Credentials.from_service_account_info(info, scopes=scope)
 
@@ -33,272 +32,191 @@ def upload_to_drive(file_path, filename, mime_type):
     service = build('drive', 'v3', credentials=credentials)
     folders = ["Ansar Hospital", "Backup"]
     parent_id = None
-
     for folder_name in folders:
-        results = service.files().list(q=f"mimeType='application/vnd.google-apps.folder' and name='{folder_name}' and '{parent_id or 'root'}' in parents and trashed=false",
-                                       spaces='drive', fields='files(id, name)').execute()
+        results = service.files().list(
+            q=f"mimeType='application/vnd.google-apps.folder' and name='{folder_name}' and '{parent_id or 'root'}' in parents and trashed=false",
+            spaces='drive', fields='files(id, name)').execute()
         folder = results.get('files')
         if folder:
             parent_id = folder[0]['id']
         else:
-            metadata = {
-                'name': folder_name,
-                'mimeType': 'application/vnd.google-apps.folder',
-                'parents': [parent_id] if parent_id else []
-            }
+            metadata = {'name': folder_name, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [parent_id] if parent_id else []}
             folder = service.files().create(body=metadata, fields='id').execute()
             parent_id = folder.get('id')
-
     file_metadata = {'name': filename, 'parents': [parent_id]}
     media = build('media', 'v1').MediaFileUpload(file_path, mimetype=mime_type)
     uploaded = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
     return uploaded.get('id')
 
-@appointment_bp.route('/export/<file_format>')
-def export_appointments(file_format):
-    sheet = spreadsheet.worksheet('Appointment')
-    data = sheet.get_all_values()
-    df = pd.DataFrame(data[1:], columns=data[0])
-    today = datetime.now().strftime('%d-%m-%Y')
-
-    try:
-        if file_format == 'csv':
-            filename = f"appointment_export_{today}.csv"
-            path = os.path.join(EXPORT_DIR, filename)
-            df.to_csv(path, index=False)
-            flash(f"✅ CSV exported to: {path}")
-
-        elif file_format == 'excel':
-            filename = f"appointment_export_{today}.xlsx"
-            path = os.path.join(EXPORT_DIR, filename)
-            df.to_excel(path, index=False)
-            flash(f"✅ Excel exported to: {path}")
-
-        elif file_format == 'pdf':
-            filename = f"appointment_export_{today}.pdf"
-            path = os.path.join(EXPORT_DIR, filename)
-            col_widths = [12, 28, 35, 30, 32, 20, 18, 20]
-            headers = df.columns.tolist()
-            pdf = FPDF(orientation='P', unit='mm', format='A4')
-            pdf.set_auto_page_break(auto=True, margin=10)
-            pdf.add_page()
-            pdf.set_font("Arial", size=7)
-
-            def render_header():
-                pdf.set_fill_color(220, 230, 241)
-                pdf.set_text_color(0)
-                pdf.set_font('Arial', 'B', 7)
-                for i, col in enumerate(headers):
-                    pdf.cell(col_widths[i], 7, col, border=1, fill=True, align='C')
-                pdf.ln(7)
-                pdf.set_font('Arial', '', 6)
-
-            render_header()
-            for _, row in df.iterrows():
-                cell_texts = [str(val) if pd.notnull(val) else '' for val in row]
-                for i, text in enumerate(cell_texts):
-                    align = 'C' if headers[i] in {'No', 'Date', 'Mobile', 'Staff', 'Status'} else 'L'
-                    pdf.cell(col_widths[i], 6, text, border=1, align=align)
-                pdf.ln(6)
-
-            pdf.output(path)
-            flash(f"✅ PDF exported to: {path}")
-
-        elif file_format == 'google':
-            filename = f"Appointment_Backup_{today}.xlsx"
-            path = os.path.join(EXPORT_DIR, filename)
-            df.to_excel(path, index=False)
-            upload_to_drive(path, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            flash("✅ Spreadsheet uploaded to Google Drive 'Ansar Hospital/Backup'.")
-
-    except Exception as e:
-        flash(f"❌ Export failed: {e}")
-        print("Export error:", e)
-
-    return redirect(url_for('appointment_bp.appointment_main'))
-
-@appointment_bp.route('/', methods=['GET', 'POST'])
+@appointment_bp.route('/', methods=['GET'])
+@login_required
 @access_required('appointment')
 def appointment_main():
-    sheet = spreadsheet.worksheet("Appointment")
+    from urllib.parse import urlencode
+    import requests
+
     dropdown_sheet = spreadsheet.worksheet("Dropdownlist")
-    staff = session.get('user', {}).get('name', 'STAFF')
-    selected_address = 'OTHER'
-    selected_status = 'NOT REPORTED'
-    all_records = sheet.get_all_records()
+    address_list = sorted(set(r.strip() for r in dropdown_sheet.col_values(1) if r.strip()))
 
-    if request.method == 'POST':
-        form = request.form
-        if form.get('action') == 'update':
-            raw_index = form.get('record_index', '').strip()
-            if not raw_index.isdigit():
-                flash("⚠️ Record index missing.", 'danger')
-                return redirect(url_for('appointment_bp.appointment_main'))
-            index = int(raw_index)
-            try:
-                updated_row = [
-                    sheet.cell(index, 1).value or str(index - 1),
-                    sheet.cell(index, 2).value or get_local_timestamp(),
-                    form['update_name'].strip().upper(),
-                    form['update_hf_name'].strip().upper(),
-                    form['update_address'].strip().upper(),
-                    form['update_mobile'].strip(),
-                    sheet.cell(index, 7).value or staff,
-                    form['update_status'].strip().upper(),
-                ]
-                if not updated_row[5].isdigit() or len(updated_row[5]) != 10:
-                    flash("⚠️ Mobile number must be 10 digits.", 'danger')
-                    return redirect(url_for('appointment_bp.appointment_main'))
-                sheet.update(f'A{index}:H{index}', [updated_row])
-                flash("✅ Appointment updated.", 'success')
-            except Exception as e:
-                flash(f"❌ Update failed: {e}", 'danger')
-            return redirect(url_for('appointment_bp.appointment_main'))
-
-        elif 'save' in form:
-            try:
-                name = form['name'].strip().upper()
-                hf_name = form['hf_name'].strip().upper()
-                address = form['address'].strip().upper()
-                if address == 'OTHER':
-                    address = form.get('other_address', '').strip().upper()
-                mobile = form['mobile'].strip()
-                status = form.get('status', 'NOT REPORTED').strip().upper()
-
-                if not mobile.isdigit() or len(mobile) != 10:
-                    flash("⚠️ Mobile number must be 10 digits.", 'danger')
-                    return redirect(url_for('appointment_bp.appointment_main'))
-
-                existing_addresses = [a.strip().upper() for a in dropdown_sheet.col_values(1)]
-                if address and address not in existing_addresses:
-                    dropdown_sheet.append_row([address])
-                    address_set = sorted(set(existing_addresses + [address]) - {'OTHER'})
-                    address_set.append("OTHER")
-                    dropdown_sheet.clear()
-                    dropdown_sheet.update('A1', [[v] for v in address_set])
-
-                timestamp = get_local_timestamp()
-                appointment_no = len(all_records) + 1
-                new_row = [appointment_no, timestamp, name, hf_name, address, mobile, staff, status]
-                sheet.append_row(new_row, value_input_option='USER_ENTERED')
-
-                email_data = {
-                    "name": name,
-                    "hf_name": hf_name,
-                    "address": address,
-                    "staff": staff,
-                    "number": appointment_no,
-                    "timestamp": timestamp  # ✅ Pass the actual IST timestamp to email
-                }
-                send_mail(
-                    to_email=os.getenv("EMAIL_RECEIVER", "zakiup@gmail.com"),
-                    data=email_data
-                )
-
-                flash("✅ Appointment added.", 'success')
-            except Exception as e:
-                flash(f"❌ Save failed: {e}", 'danger')
-            return redirect(url_for('appointment_bp.appointment_main'))
-
-        elif form.get('search') == '1':
-            name_q = form.get('search_name', '').lower()
-            mobile_q = form.get('search_mobile', '')
-            address_q = form.get('search_address', '').lower()
-            start = form.get('start_date')
-            end = form.get('end_date')
-            filtered = []
-
-            for i, row in enumerate(all_records, start=2):
-                match = True
-                if name_q and name_q not in str(row.get('Name', '')).lower():
-                    match = False
-                if mobile_q and mobile_q not in str(row.get('Mobile', '')):
-                    match = False
-                if address_q and address_q not in str(row.get('Address', '')).lower():
-                    match = False
-
-                if start or end:
-                    try:
-                        raw_date = row.get('Date', '').strip()
-
-                        # Replace colon if accidentally used instead of comma
-                        if ':' in raw_date and ',' not in raw_date:
-                            raw_date = raw_date.replace(':', ',', 1)
-
-                            row_date_str = raw_date.split(',')[0].strip()
-                            row_date = datetime.strptime(row_date_str, '%d/%m/%Y').date()
-
-                        if start:
-                            start_date = datetime.strptime(start, '%Y-%m-%d').date()
-                            if row_date < start_date:
-                                match = False
-                        if end:
-                            end_date = datetime.strptime(end, '%Y-%m-%d').date()
-                            if row_date > end_date:
-                                match = False
-                    except Exception as e:
-                        print(f"⚠️ Date parsing error in row {i}: raw_date='{row.get('Date', '')}' → {e}")
-                        match = False
-
-                if match:
-                    row['SheetRowIndex'] = i
-                    filtered.append(row)
-
-
-            address_list = sorted(set(r.strip() for r in dropdown_sheet.col_values(1) if r.strip()))
-            total = len(filtered)
-            reported = len([r for r in filtered if r.get('Status', '').strip().upper() == 'REPORTED'])
-            pending = len([r for r in filtered if r.get('Status', '').strip().upper() == 'NOT REPORTED'])
-
-            stats = {
-                'total': total,
-                'reported': reported,
-                'pending': pending
-            }
-
-            return render_template(
-                'appointment.html',
-                user=session['user'],
-                access=session['user']['access'],
-                modules=MODULES,
-                address_list=address_list,
-                records=filtered,
-                selected_address=selected_address,
-                selected_status=selected_status,
-                stats=stats
-            )
-
-    # ✅ Use date from get_local_timestamp for accurate filtering
-    today = get_local_timestamp().split(',')[0]
-    records = []
-    for i, row in enumerate(all_records, start=2):
-        if row.get('Date', '').split(',')[0].strip() == today:
-            row['SheetRowIndex'] = i
-            records.append(row)
-    if not records:
-        for i, row in enumerate(all_records[-10:], start=len(all_records) - 10 + 2):
-            row['SheetRowIndex'] = i
-            records.append(row)
-
-    total = len(records)
-    reported = len([r for r in records if r.get('Status', '').strip().upper() == 'REPORTED'])
-    pending = len([r for r in records if r.get('Status', '').strip().upper() == 'NOT REPORTED'])
-
-    stats = {
-        'total': total,
-        'reported': reported,
-        'pending': pending
+    # 📥 Extract GET search parameters
+    filters = {
+        "name": request.args.get("name", "").strip(),
+        "hf_name": request.args.get("hf_name", "").strip(),
+        "mobile": request.args.get("mobile", "").strip(),
+        "address": request.args.get("address", "").strip(),
+        "doctor": request.args.get("doctor", "").strip(),
+        "from_date": request.args.get("from_date", "").strip(),
+        "to_date": request.args.get("to_date", "").strip()
     }
 
-    address_list = sorted(set(r.strip() for r in dropdown_sheet.col_values(1) if r.strip()))
+    print("📥 Appointment filters:", filters)
+
+    try:
+        # 🛰️ Call internal API for filtered appointments
+        query = urlencode(filters)
+        api_url = f"http://127.0.0.1:5000/api/search_appointments?{query}"
+        response = requests.get(api_url)
+        all_records = response.json() if response.status_code == 200 else []
+    except Exception as e:
+        flash(f"❌ Failed to load appointments: {e}", "danger")
+        all_records = []
+
+    # 🎯 Normalize field names for table rendering
+    for row in all_records:
+        row["HF_Name"] = row.get("H/F Name", "")
+        row["B_Group"] = row.get("B.Group", "")
+        row["DOB"] = row.get("DOB", "")
+        row["Title"] = row.get("Titles", "")
+        row["MobileNo"] = row.get("Mobile", "")
+        row["StaffName"] = row.get("Staff", "")
+        row["VisitStatus"] = row.get("Status", "").strip().upper()
+
+    # 📊 Stats for summary boxes
+    stats = {
+        'total': len(all_records),
+        'reported': sum(1 for r in all_records if r.get('VisitStatus', '') == 'REPORTED'),
+        'pending': sum(1 for r in all_records if r.get('VisitStatus', '') != 'REPORTED')
+    }
+
     return render_template(
         'appointment.html',
         user=session['user'],
         access=session['user']['access'],
         modules=MODULES,
         address_list=address_list,
-        records=records,
-        selected_address=selected_address,
-        selected_status=selected_status,
-        stats=stats
+        records=all_records,
+        stats=stats,
+        selected_address='',
+        selected_status=''
     )
+
+
+@appointment_bp.route('/edit/<id>', methods=['GET', 'POST'])
+def edit_appointment(id):
+    sheet = spreadsheet.worksheet("Appointment")
+    patient_sheet = spreadsheet.worksheet("Patient")
+    address_sheet = spreadsheet.worksheet("Dropdownlist")
+    records = sheet.get_all_records()
+    address_list = [row[0] for row in address_sheet.get_all_values() if row]
+
+    row_index = next((i for i, row in enumerate(records, start=2) if row.get("ID") == id), None)
+    if not row_index:
+        flash("Record not found", "danger")
+        return redirect(url_for('appointment_bp.view_appointments'))
+
+    if request.method == 'POST':
+        data = request.form.to_dict()
+        dob = data.get('dob', '').strip()
+        if "-" in dob:
+            try:
+                dob = datetime.strptime(dob, "%Y-%m-%d").strftime("%d/%m/%Y")
+            except:
+                pass
+
+        final_address = data.get("address", "")
+        if final_address == "OTHER":
+            final_address = data.get("new_address", "").strip().upper()
+
+        # Prepare updated row for Appointment
+        updated_row = [
+            row_index - 1,
+            records[row_index - 2]["Date"],
+            data.get("id", ""),
+            data.get("prefix", ""),
+            data.get("name", ""),
+            data.get("title", ""),
+            data.get("hf_name", ""),
+            data.get("gender", ""),
+            data.get("age", ""),
+            dob,
+            final_address,
+            data.get("mobile", ""),
+            data.get("staff", ""),
+            data.get("status", ""),
+            data.get("doctor", "")
+        ]
+
+        try:
+            sheet.delete_rows(row_index)
+            sheet.insert_row(updated_row, row_index)
+            flash("✅ Appointment updated successfully!", "success")
+
+            # ✅ Update Patient sheet with only required columns
+            patient_records = patient_sheet.get_all_values()
+            headers = patient_records[0]
+            id_col = headers.index("ID") if "ID" in headers else 0
+
+            for i, row in enumerate(patient_records[1:], start=2):
+                if row and row[id_col] == id:
+                    city = row[10] if len(row) > 10 else ""  # Preserve city
+                    update_row = [
+                        data.get("id", ""),
+                        data.get("prefix", ""),
+                        data.get("name", ""),
+                        data.get("title", ""),
+                        data.get("hf_name", ""),
+                        data.get("mobile", ""),
+                        final_address,
+                        city,
+                        data.get("age", ""),
+                        data.get("gender", ""),
+                        dob
+                    ]
+                    # Update A to K (11 columns)
+                    patient_sheet.update(f"A{i}:K{i}", [update_row])
+                    print(f"✅ Patient sheet (trimmed) updated for ID: {id}")
+                    break
+
+            # ✅ Add new address to Dropdownlist, preserve other columns
+            if data.get("address") == "OTHER" and final_address:
+                try:
+                    dropdown_sheet = spreadsheet.worksheet("Dropdownlist")
+                    all_rows = dropdown_sheet.get_all_values()
+                    col_a = [row[0].strip().upper() for row in all_rows if row and row[0].strip()]
+
+                    if final_address not in col_a:
+                        col_a.append(final_address)
+                        sorted_a = sorted(set(col_a))
+
+                        max_rows = max(len(sorted_a), len(all_rows))
+                        updated_rows = []
+
+                        for idx in range(max_rows):
+                            existing = all_rows[idx] if idx < len(all_rows) else [""]
+                            new_row = [sorted_a[idx]] if idx < len(sorted_a) else [""]
+                            new_row += existing[1:] if len(existing) > 1 else []
+                            updated_rows.append(new_row)
+
+                        end_col = chr(65 + len(updated_rows[0]) - 1)
+                        dropdown_sheet.update(f"A1:{end_col}{len(updated_rows)}", updated_rows)
+                        print("✅ New address inserted and A:A sorted without losing other columns.")
+                except Exception as addr_err:
+                    print("⚠️ Failed to update Dropdownlist:", addr_err)
+
+        except Exception as e:
+            flash(f"❌ Failed to update: {e}", "danger")
+
+        return redirect(url_for('appointment_bp.appointment_main'))
+
+    record = records[row_index - 2]
+    return render_template('edit_appointment.html', id=id, record=record, address_list=address_list)

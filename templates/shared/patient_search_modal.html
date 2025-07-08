@@ -1,0 +1,59 @@
+<div class="modal fade" id="patientSearchModal" tabindex="-1" aria-labelledby="patientSearchModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="patientSearchModalLabel">Select Appointment Patient</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        {% if appointment_list %}
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm table-striped">
+            <thead class="table-info text-center">
+              <tr>
+                <th>Name</th>
+                <th>H/F Name</th>
+                <th>Mobile</th>
+                <th>Gender</th>
+                <th>Address</th>
+                <th>DOB</th>
+                <th>ID</th>
+                <th>Blood Group</th>
+                <th>Select</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in appointment_list %}
+              <tr>
+                <td>{{ p.name }}</td>
+                <td>{{ p.hf_name }}</td>
+                <td>{{ p.mobile }}</td>
+                <td>{{ p.gender }}</td>
+                <td>{{ p.address }}</td>
+                <td>{{ p.dob }}</td>
+                <td>{{ p.id }}</td>
+                <td>{{ p.blood_group }}</td>
+                <td class="text-center">
+                  <button class="btn btn-sm btn-success" onclick='selectPatient({
+                    name: "{{ p.name }}",
+                    hf_name: "{{ p.hf_name }}",
+                    mobile: "{{ p.mobile }}",
+                    gender: "{{ p.gender }}",
+                    address: "{{ p.address }}",
+                    dob: "{{ p.dob }}",
+                    id: "{{ p.id }}",
+                    blood_group: "{{ p.blood_group }}"
+                  })'>Select</button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <p class="text-muted">No appointments found for today.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>

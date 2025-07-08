@@ -1,0 +1,71 @@
+{# shared/appointment_form.html #}
+<div class="col-md-6">
+  <fieldset class="border p-3 rounded shadow-sm" style="background-color: #fff9e6; font-size: 13px;">
+    <legend class="w-auto px-2 fw-semibold text-warning">📜 New Appointment</legend>
+    <form method="POST" id="appointmentForm" autocomplete="off">
+      <div class="row g-2">
+        <div class="col-4"><input type="text" name="id" id="id" class="form-control form-control-sm" placeholder="ID" readonly></div>
+        <div class="col-2">
+          <select name="prefix" id="prefix" class="form-select form-select-sm">
+            <option value="">-</option>
+            <option>Mr.</option><option>Mrs.</option><option>Ms.</option><option>Kumari</option>
+            <option>Smt</option><option>Master</option><option>Baby</option>
+            <option>Adv.</option><option>Dr.</option><option>Sri</option><option>Md</option>
+          </select>
+        </div>
+        <div class="col-6"><input type="text" name="name" id="name" required class="form-control form-control-sm text-uppercase" placeholder="Name"></div>
+        <div class="col-2">
+          <select name="title" id="title" class="form-select form-select-sm">
+            <option value="">-</option><option>S/o</option><option>W/o</option><option>D/o</option>
+          </select>
+        </div>
+        <div class="col-6"><input type="text" name="hf_name" id="hf_name" required class="form-control form-control-sm text-uppercase" placeholder="H/F Name"></div>
+        <div class="col-4"><input type="text" name="age" id="age" class="form-control form-control-sm" placeholder="Age yy/mm/dd"></div>
+        <div class="col-4"><input type="text" name="dob" id="dob" class="form-control form-control-sm" placeholder="DOB dd/mm/yyyy"></div>
+        <div class="col-4">
+          <select name="gender" id="gender" class="form-select form-select-sm">
+            <option value="">Gender</option><option value="M">Male</option><option value="F">Female</option>
+          </select>
+        </div>
+        <div class="col-4">
+          <select name="bgroup" id="bgroup" class="form-select form-select-sm">
+            <option value="">B.Group</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+            <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+          </select>
+        </div>
+        <div class="col-4"><input type="text" name="city" id="city" class="form-control form-control-sm" placeholder="City"></div>
+        <div class="col-8">
+          <select name="address" id="address" class="form-select form-select-sm">
+            <option>OTHER</option>
+            {% for addr in address_list %}<option>{{ addr }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label small">Other Address (if not in list):</label>
+          <input type="text" name="other_address" id="other_address" class="form-control form-control-sm text-uppercase" placeholder="New Address (optional)">
+        </div>
+        <div class="col-6"><input type="text" name="mobile" id="mobile" maxlength="10" required pattern="[0-9]{10}" class="form-control form-control-sm" placeholder="Mobile"></div>
+        <div class="col-6"><input type="text" class="form-control form-control-sm" value="{{ user.name }}" disabled></div>
+        <div class="col-6">
+          <select name="status" class="form-select form-select-sm">
+            <option value="NOT REPORTED" selected>NOT REPORTED</option><option value="REPORTED">REPORTED</option>
+          </select>
+        </div>
+        <div class="col-6">
+          <select name="doctor" id="doctor" class="form-select form-select-sm">
+            <option value="">Select Doctor</option>
+            <option>Dr.M.Zaki Ansari</option><option>Dr.Mrs.Nishat Ansari</option>
+            <option>Dr.M.Affan Zaki Ansari</option><option>Dr.Mrs.Shanaz</option>
+          </select>
+        </div>
+      </div>
+      <div class="row mt-3">
+        <div class="col d-flex gap-2">
+          <button type="submit" name="save" class="btn btn-success btn-sm w-100">Save</button>
+          <button type="reset" class="btn btn-secondary btn-sm w-100">Reset</button>
+          <a href="{{ url_for('index') }}" class="btn btn-danger btn-sm w-100">Exit</a>
+        </div>
+      </div>
+    </form>
+  </fieldset>
+</div>

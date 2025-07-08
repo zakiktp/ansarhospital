@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>OPD Confirmation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      color: #333;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .header img {
+      height: 40px;
+      margin-right: 10px;
+    }
+    .header h2 {
+      margin: 0;
+      font-size: 18px;
+      color: #004080;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    td, th {
+      border: 1px solid #ccc;
+      padding: 6px 10px;
+      vertical-align: top;
+    }
+    td.label {
+      font-weight: bold;
+      background: #f0f6ff;
+      width: 30%;
+    }
+    .footer {
+      margin-top: 15px;
+      font-size: 12px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="cid:logo" alt="Logo">
+    <h2>ANSAR HOSPITAL</h2>
+  </div>
+
+  <table>
+    <tr><td class="label">No</td><td>{{ data.no }}</td></tr>
+    <tr><td class="label">Date</td><td>{{ data.date }}</td></tr>
+    <tr><td class="label">Name</td><td>{{ data.name }}</td></tr>
+    <tr><td class="label">F/H Name</td><td>{{ data.fh_name }}</td></tr>
+    <tr><td class="label">ID</td><td>{{ data.patient_id }}</td></tr>
+    <tr><td class="label">Age</td><td>{{ data.age }}</td></tr>
+    <tr><td class="label">DOB</td><td>{{ data.dob }}</td></tr>
+    <tr><td class="label">Sex</td><td>{{ data.sex }}</td></tr>
+    <tr><td class="label">Address</td><td>{{ data.address }}</td></tr>
+    <tr><td class="label">Mobile</td><td>{{ data.mobile }}</td></tr>
+    <tr><td class="label">Fee Recd</td><td>₹{{ data.fee }}</td></tr>
+    <tr><td class="label">Submitted By</td><td>{{ data.submitted_by }}</td></tr>
+  </table>
+
+  <div class="footer">
+    This is an auto-generated confirmation from Ansar Hospital.<br>
+    For queries, contact info@ansarhospital.in.
+  </div>
+</body>
+</html>

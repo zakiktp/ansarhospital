@@ -1,7 +1,7 @@
 {% extends "auth_base.html" %}
 {% block content %}
 <h4>🔐 Verify OTP</h4>
-<form method="POST" action="{{ url_for('auth_utils_bp.verify_otp') }}">
+<form method="POST" action="{{ url_for('auth.verify_otp') }}">
   <div class="mb-3">
     <label for="otp" class="form-label">Enter OTP:</label>
     <input type="text" class="form-control" id="otp" name="otp" required placeholder="Enter OTP">

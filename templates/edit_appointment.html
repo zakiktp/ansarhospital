@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% block title %}Edit Appointment{% endblock %}
+{% block content %}
+
+<div class="container mt-4">
+  <h4 class="mb-3">Edit Appointment - {{ id }}</h4>
+  <form method="POST">
+    
+    <!-- Row 1: ID, Prefix, Name -->
+    <div class="row mb-2">
+      <div class="col-md-2">
+        <input type="text" name="id" class="form-control" value="{{ id }}" readonly>
+      </div>
+      <div class="col-md-2">
+        <select name="prefix" class="form-control" id="prefixSelect">
+          <option value="">Select</option>
+          <option value="Mr." {{ 'selected' if record['Prefix'] == 'Mr.' else '' }}>Mr.</option>
+          <option value="Mrs." {{ 'selected' if record['Prefix'] == 'Mrs.' else '' }}>Mrs.</option>
+          <option value="Ms." {{ 'selected' if record['Prefix'] == 'Ms.' else '' }}>Ms.</option>
+        </select>
+      </div>
+      <div class="col-md-8">
+        <input type="text" name="name" class="form-control" placeholder="Name" value="{{ record['Name'] }}" required>
+      </div>
+    </div>
+
+    <!-- Row 2: Title, H/F Name -->
+    <div class="row mb-2">
+      <div class="col-md-3">
+        <select name="title" class="form-control">
+          <option value="S/O" {{ 'selected' if record['Titles'] == 'S/O' else '' }}>S/O</option>
+          <option value="D/O" {{ 'selected' if record['Titles'] == 'D/O' else '' }}>D/O</option>
+          <option value="W/O" {{ 'selected' if record['Titles'] == 'W/O' else '' }}>W/O</option>
+        </select>
+      </div>
+      <div class="col-md-9">
+        <input type="text" name="hf_name" class="form-control" placeholder="H/F Name" value="{{ record['H/F Name'] }}">
+      </div>
+    </div>
+
+    <!-- Row 3: Age, DOB -->
+    <div class="row mb-2">
+      <div class="col-md-6">
+        <input type="text" name="age" id="age" class="form-control"
+          placeholder="Age (YY or YY/MM/DD)"
+          pattern="^\d{2}(/(\d{2})){0,2}$"
+          title="Enter age as YY or YY/MM/DD (e.g. 23 or 23/02/05)"
+          value="{{ record['Age'] }}">      </div>
+      <div class="col-md-6">
+        {% set dob_parts = record['DOB'].split('/') if record['DOB'] and '/' in record['DOB'] else [] %}
+        {% set dob_val = dob_parts[2] ~ '-' ~ dob_parts[1] ~ '-' ~ dob_parts[0] if dob_parts | length == 3 else record['DOB'] %}
+        <input type="date" name="dob" class="form-control" id="dob" value="{{ dob_val }}">
+      </div>
+    </div>
+
+    <!-- Row 4: Gender, Mobile -->
+    <div class="row mb-2">
+      <div class="col-md-6">
+        <select name="gender" class="form-control" id="gender">
+          <option value="">Select Gender</option>
+          <option value="Male" {{ 'selected' if record['Gender'] == 'Male' else '' }}>Male</option>
+          <option value="Female" {{ 'selected' if record['Gender'] == 'Female' else '' }}>Female</option>
+          <option value="Other" {{ 'selected' if record['Gender'] == 'Other' else '' }}>Other</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <input type="text" name="mobile" class="form-control" value="{{ record['Mobile'] }}" pattern="\d{10}" maxlength="10" required>
+      </div>
+    </div>
+
+    <!-- Row 5: Address -->
+    <div class="row mb-2">
+      <div class="col-md-12">
+        <select name="address" class="form-control">
+          {% for addr in address_list %}
+            <option value="{{ addr }}" {{ 'selected' if record['Address'] == addr else '' }}>{{ addr }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Row 6: Staff, Status, Doctor -->
+    <div class="row mb-2">
+      <div class="col-md-4">
+        <input type="text" name="staff" class="form-control" value="{{ record['Staff'] }}" readonly>
+      </div>
+      <div class="col-md-4">
+        <select name="status" class="form-control">
+          <option value="NOT REPORTED" {{ 'selected' if record['Status'] == 'NOT REPORTED' else '' }}>NOT REPORTED</option>
+          <option value="REPORTED" {{ 'selected' if record['Status'] == 'REPORTED' else '' }}>REPORTED</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <select name="doctor" class="form-control">
+          <option>Select Doctor</option>
+          <option value="Dr.M.Zaki Ansari" {{ 'selected' if record['Doctor'] == 'Dr.M.Zaki Ansari' else '' }}>Dr.M.Zaki Ansari</option>
+          <option value="Dr.Mrs.Nishat Ansari" {{ 'selected' if record['Doctor'] == 'Dr.Mrs.Nishat Ansari' else '' }}>Dr.Mrs.Nishat Ansari</option>
+          <option value="Dr.M.Affan Zaki Ansari" {{ 'selected' if record['Doctor'] == 'Dr.M.Affan Zaki Ansari' else '' }}>Dr.M.Affan Zaki Ansari</option>
+          <option value="Dr.Mrs.Shanaz" {{ 'selected' if record['Doctor'] == 'Dr.Mrs.Shanaz' else '' }}>Dr.Mrs.Shanaz</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="row mt-3">
+      <div class="col-md-4">
+        <button type="submit" class="btn btn-success w-100">Update</button>
+      </div>
+      <div class="col-md-4">
+        <a href="{{ url_for('appointment_bp.appointment_main') }}" class="btn btn-secondary w-100">Back</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Gender auto-fill from prefix -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const ageField = document.querySelector("[name='age']");
+  const dobField = document.querySelector("[name='dob']");
+  const prefixField = document.querySelector("[name='prefix']");
+  const genderField = document.querySelector("[name='gender']");
+  const textInputs = document.querySelectorAll("input[type='text']");
+
+  // Convert text inputs to uppercase on input
+  textInputs.forEach(input => {
+    input.addEventListener("input", () => {
+      input.value = input.value.toUpperCase();
+    });
+  });
+
+  // Auto DOB → Age calculation
+  dobField.addEventListener("change", () => {
+    const dob = new Date(dobField.value);
+    if (!isNaN(dob)) {
+      const now = new Date();
+      const diff = new Date(now - dob);
+      const years = diff.getUTCFullYear() - 1970;
+      const months = diff.getUTCMonth();
+      const days = diff.getUTCDate() - 1;
+      ageField.value = `${String(years).padStart(2, '0')}/${String(months).padStart(2, '0')}/${String(days).padStart(2, '0')}`;
+    }
+  });
+
+  // Auto Age → DOB calculation
+  ageField.addEventListener("change", () => {
+    let parts = ageField.value.split("/");
+    let yy = parseInt(parts[0], 10) || 0;
+    let mm = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+    let dd = parts.length > 2 ? parseInt(parts[2], 10) : 0;
+
+    const now = new Date();
+    const dob = new Date(
+      now.getFullYear() - yy,
+      now.getMonth() - mm,
+      now.getDate() - dd
+    );
+
+    dobField.value = dob.toISOString().split("T")[0];
+    ageField.value = `${String(yy).padStart(2, '0')}/${String(mm).padStart(2, '0')}/${String(dd).padStart(2, '0')}`;
+  });
+
+  // Auto gender from prefix
+  prefixField.addEventListener("change", function () {
+    if (this.value === "Mr.") genderField.value = "Male";
+    else if (this.value === "Mrs." || this.value === "Ms.") genderField.value = "Female";
+  });
+});
+</script>
+
+{% endblock %}

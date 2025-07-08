@@ -65,3 +65,18 @@ def validate_otp(email, entered_otp):
         return False
 
     return otp == entered_otp and datetime.now() <= expiry_time
+
+def get_name_by_username(username):
+    import gspread
+    gc = gspread.service_account(filename="credentials.json")  # Adjust path if needed
+    sheet = gc.open("Database").worksheet("Login")  # 👈 Updated sheet name
+    rows = sheet.get_all_values()
+
+    header = rows[0]
+    user_index = header.index("User")
+    name_index = header.index("Name")
+
+    for row in rows[1:]:
+        if row[user_index].strip().lower() == username.strip().lower():
+            return row[name_index]
+    return "STAFF"

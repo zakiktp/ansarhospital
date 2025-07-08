@@ -1,60 +1,60 @@
-# ✅ STEP 1: Load .env BEFORE importing anything that uses it
-import os
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from dotenv import load_dotenv
 from pathlib import Path
-from utils.env_loader import *  # This loads and validates env variables
+import os
+import pytz
+import gspread
+from datetime import datetime
+import pandas as pd
 
+print("✅ appointment_api.py is loaded and executing")
+
+
+# Load .env before anything else
 env_path = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
-# Debug check
-print("✅ Loaded .env from:", env_path)
-print("🔐 CREDENTIALS_PATH =", os.getenv("CREDENTIALS_PATH"))
-
-# ✅ STEP 2: Now safe to import things that depend on env
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-from services.user_service import get_user_by_username  # now this works
-from utils.sheets import worksheet
-from config import spreadsheet, MODULES
-from controllers.appointment_controller import appointment_bp
-from utils.auth_utils import auth_utils_bp, access_required
-import pandas as pd
-import pytz
-from datetime import datetime
-
-# Now your environment variables are available globally
+# Google credentials
 CREDENTIALS_PATH = os.getenv("CREDENTIALS_PATH")
-
-import gspread
 gc = gspread.service_account(filename=CREDENTIALS_PATH)
-print("📂 Current Working Directory:", os.getcwd())
-print("📄 .env file exists here:", os.path.exists(".env"))
 
-for key in ["SENDGRID_API_KEY", "EMAIL_SENDER", "EMAIL_SENDER_NAME"]:
-    value = os.getenv(key)
-    if value:
-        os.environ[key] = value
-    else:
-        print(f"⚠️ WARNING: {key} is not set in environment variables.")
+# Environment-dependent imports
+from config import spreadsheet, MODULES
+from utils.sheet_utils import worksheet
+from services.user_service import get_user_by_username
+from utils.auth_utils import login_required, auth_utils_bp
+from utils.forgot_password import forgot_password_bp
 
+# Blueprints from controllers
+from controllers.auth_controller import auth_bp
+from controllers.appointment_controller import appointment_bp
+from controllers.opd_controller import opd_bp
+from controllers.patients_controller import patients_bp
+
+
+# Blueprints from routes
+from routes.attendance_routes import attendance_bp
+
+# Flask app setup
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'fallback-key')
 
-# Utility: today's appointment count
+# Utility functions
 def get_today_appointment_count():
     today = datetime.now(pytz.timezone("Asia/Kolkata")).strftime('%d/%m/%Y')
     all_records = worksheet.get_all_records()
     return sum(1 for row in all_records if row.get('Date') == today)
 
-# Local time for logging
 def get_local_timestamp():
     india = pytz.timezone("Asia/Kolkata")
     return datetime.now(india).strftime('%d/%m/%Y %H:%M:%S')
 
-# Root route
+# Routes
 @app.route('/')
 def index():
-    return redirect(url_for('dashboard'))
+    if 'user' in session:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('auth.login'))
 
 @app.route('/dashboard')
 def dashboard():
@@ -62,84 +62,47 @@ def dashboard():
     today_count = get_today_appointment_count()
     return render_template('dashboard.html', user=user, today_count=today_count)
 
-# Login per module
-@app.route('/auth/<module>', methods=['GET', 'POST'])
-def module_login(module):
-    login_sheet = spreadsheet.worksheet("Login")
-    users = get_user_credentials(login_sheet)
+@app.route('/success')
+def success():
+    return "<h3>✅ OPD entry submitted successfully!</h3><a href='/opd'>← Back to OPD form</a>"
 
-    if request.method == 'POST':
-        username = request.form['username'].strip()
-        password = request.form['password'].strip()
-        user = users.get(username)
-
-        if user and user['Password'] == password:
-            session['user'] = {
-                'username': username,
-                'name': user.get('Name', username),
-                'role': user.get('Role', ''),
-                'access': [a.strip().lower() for a in user.get('Access', '').split(',')]
-            }
-
-            # Log activity
-            log_sheet = spreadsheet.worksheet('Log')
-            timestamp = get_local_timestamp()
-            log_sheet.append_row([timestamp, username, module.upper(), 'Login Successful'])
-
-            return redirect(url_for(f'{module}_bp.{module}_main'))
-
-        flash('Invalid username or password')
-
-    return render_template('login.html', module=module)
-
-# Credential utility
-def get_user_credentials(sheet):
-    data = sheet.get_all_records()
-    return {row['User']: row for row in data}
-
-# Optional legacy login
-@app.route('/log', methods=['GET', 'POST'])
-def general_login():
-    module = request.args.get('module', 'appointment')
-
-    if request.method == 'POST':
-        username = request.form['username'].strip()
-        password = request.form['password'].strip()
-
-        login_sheet = spreadsheet.worksheet("Login")
-        records = login_sheet.get_all_records()
-        credentials = {row['User']: row['Password'] for row in records}
-
-        if username in credentials and credentials[username] == password:
-            session['user'] = {
-                'username': username,
-                'name': username,
-                'role': '',
-                'access': ['all']
-            }
-            flash("✅ Login successful.")
-            return redirect(url_for('appointment_main'))
-        else:
-            flash("❌ Invalid credentials.", 'danger')
-
-    return render_template("login.html", module=module)
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    flash("You have been logged out.")
-    return redirect(url_for('index'))
-
-from utils.forgot_password import forgot_password_bp
-
-# Register Blueprints
+# Register Blueprints (only once)
+app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(appointment_bp)
+app.register_blueprint(attendance_bp)
 app.register_blueprint(auth_utils_bp)
 app.register_blueprint(forgot_password_bp)
+app.register_blueprint(opd_bp)
+app.register_blueprint(patients_bp)
 
-# Jinja globals
+from routes.patient_api import patient_api_bp
+app.register_blueprint(patient_api_bp)
+
+from routes.appointment_api import appointment_api_bp
+app.register_blueprint(appointment_api_bp)
+
+
+
+# Jinja Contexts
 app.jinja_env.globals.update(MODULES=MODULES)
 app.jinja_env.globals.update(current_year=datetime.now().year)
 
+# CLI route debugger
+@app.cli.command("list-routes")
+def list_routes():
+    from urllib.parse import unquote
+    import click
+
+    routes = []
+    for rule in app.url_map.iter_rules():
+        methods = ','.join(sorted(rule.methods - {'HEAD', 'OPTIONS'}))
+        route = f"{rule.endpoint:40s} {methods:20s} {unquote(str(rule))}"
+        routes.append(route)
+
+    click.echo("\n🔍 Available Flask Endpoints:\n" + "-" * 80)
+    for route in sorted(routes):
+        click.echo(route)
+
+# Run
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)

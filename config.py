@@ -1,31 +1,31 @@
 import os
 import json
-from dotenv import load_dotenv
 import gspread
+from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 
 # ✅ Load .env for local dev
 load_dotenv()
 
 # ✅ Load credentials from environment variable
-google_creds_json = os.getenv("GOOGLE_CREDS_JSON")
-if not google_creds_json:
+creds_json = os.getenv("GOOGLE_CREDS_JSON")
+if not creds_json:
     raise EnvironmentError("❌ GOOGLE_CREDS_JSON not found in environment variables.")
 
-creds_dict = json.loads(google_creds_json)
+creds_dict = json.loads(creds_json)
 
-# ✅ Authorize with Google API using dictionary credentials
+# ✅ Authorize Google Sheets access
 scope = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
-creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-client = gspread.authorize(creds)
+credentials = Credentials.from_service_account_info(creds_dict, scopes=scope)
+gspread_client = gspread.authorize(credentials)
 
-# ✅ Open spreadsheet using env var
-spreadsheet = client.open_by_key(os.getenv("SHEET_ID"))
+# ✅ Open target spreadsheet using its ID from .env
+spreadsheet = gspread_client.open_by_key(os.getenv("SHEET_ID"))
 
-# ✅ Define enabled modules
+# ✅ Define enabled modules for the sidebar/dashboard
 MODULES = [
     {
         "name": "Appointment",
@@ -56,7 +56,7 @@ MODULES = [
         "icon": "📤"
     },
     {
-        "name": "Birth Certificate",
+        "name": "Pharmacy",
         "endpoint": "birth_bp.certificate",
         "roles": ["admin", "receptionist"],
         "enabled": True,

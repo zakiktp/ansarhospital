@@ -1,0 +1,40 @@
+<fieldset class="border p-3 rounded shadow-sm w-100" style="background-color: #e6f2ff; font-size: 13px;">
+  <legend class="w-auto px-2 fw-semibold text-primary">
+    <i class="fa-solid fa-magnifying-glass text-info"></i> Search Appointment
+  </legend>
+  <form method="POST" class="row row-cols-lg-auto g-2 align-items-end">
+    <input type="hidden" name="search" value="1">
+    <div class="col">
+      <label class="form-label small mb-0">Name</label>
+      <input type="text" name="search_name" class="form-control form-control-sm" placeholder="Name">
+    </div>
+    <div class="col">
+      <label class="form-label small mb-0">Mobile</label>
+      <input type="text" name="search_mobile" class="form-control form-control-sm" placeholder="Mobile">
+    </div>
+    <div class="col">
+      <label class="form-label small mb-0">H/F Name</label>
+      <input type="text" name="search_hf_name" class="form-control form-control-sm" placeholder="H/F Name">
+    </div>
+    <div class="col">
+      <label class="form-label small mb-0">Address</label>
+      <input type="text" name="search_address" class="form-control form-control-sm" placeholder="Address">
+    </div>
+    <div class="col">
+      <label class="form-label small mb-0">Doctor</label>
+      <input type="text" name="search_doctor" class="form-control form-control-sm" placeholder="Doctor">
+    </div>
+    <div class="col">
+      <label class="form-label small mb-0">From</label>
+      <input type="date" name="start_date" class="form-control form-control-sm">
+    </div>
+    <div class="col">
+      <label class="form-label small mb-0">To</label>
+      <input type="date" name="end_date" class="form-control form-control-sm">
+    </div>
+    <div class="col d-flex gap-2">
+      <button type="submit" class="btn btn-info btn-sm px-4">Search</button>
+      <a href="{{ url_for('appointment_bp.appointment_main') }}" class="btn btn-outline-dark btn-sm px-4">Clear</a>
+    </div>
+  </form>
+</fieldset>

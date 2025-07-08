@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+{% block title %}OPD Entry{% endblock %}
+{% block content %}
+<style>
+  body {
+    background: #f2f7fb;
+  }
+  .opd-card {
+    background-color: #ffffff;
+    border: 1px solid #dbe5f1;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.05);
+  }
+  .opd-card h5 {
+    background-color: #e0f2ff;
+    padding: 10px 15px;
+    margin: -20px -20px 15px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    color: #005a9c;
+    font-weight: 600;
+  }
+  .form-control, .form-select {
+    border-radius: 6px;
+  }
+  .table thead {
+    background-color: #005a9c;
+    color: white;
+  }
+  .table tbody {
+    font-size: 13px;
+  }
+  .btn-outline-secondary:hover, .btn-outline-secondary:focus {
+    background-color: #005a9c;
+    color: white;
+  }
+  .modal-body table {
+    width: 100%;
+    font-size: 14px;
+  }
+  .modal-body td, .modal-body th {
+    padding: 5px;
+    border: 1px solid #ccc;
+  }
+</style>
+
+<div class="container-fluid">
+  <!-- Existing content -->
+
+  <div class="card opd-card mb-3">
+    <div class="card-body">
+      <h5>🏥 OPD Patient Entry</h5>
+      <form method="POST" onsubmit="return validateMobile();">
+        <div class="row g-2 mb-2">
+          <div class="col-md-3">
+            <input type="text" class="form-control" name="name" id="name" placeholder="Name" required onblur="searchPatientByName()">
+          </div>
+          <div class="col-md-3">
+            <input type="text" class="form-control" name="fh_name" id="fh_name" placeholder="F/H Name" required>
+          </div>
+          <div class="col-md-2">
+            <input type="text" class="form-control" name="age" id="age" placeholder="Age yy/mm/dd" pattern="\d{1,2}/\d{1,2}/\d{1,2}" title="Format: yy/mm/dd" required onblur="calculateDOB()">
+          </div>
+          <div class="col-md-2">
+            <input type="text" class="form-control" name="dob" id="dob" placeholder="DOB dd/mm/yyyy" onblur="calculateAge()">
+          </div>
+          <div class="col-md-2">
+            <select class="form-select" name="sex" id="sex">
+              <option value="F" selected>Female</option>
+              <option value="M">Male</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-2 mb-2">
+          <div class="col-md-6">
+            <select class="form-select" name="address" id="address" required>
+              {% for addr in address_list %}
+                <option value="{{ addr }}">{{ addr }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <input type="tel" class="form-control" name="mobile" id="mobile" placeholder="Mobile (10 digits)" pattern="\d{10}" maxlength="10" required>
+          </div>
+          <div class="col-md-3">
+            <input type="number" class="form-control" name="fee" placeholder="Fee Received" required>
+          </div>
+        </div>
+        <div class="text-end">
+          <button type="submit" class="btn btn-primary px-4">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Patient Match Modal -->
+  <div class="modal fade" id="patientMatchModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">🔍 Select Existing Patient</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <table class="table table-bordered table-sm">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>F/H Name</th>
+                <th>Address</th>
+                <th>Mobile</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="matchResults"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function validateMobile() {
+  const mobile = document.getElementById('mobile').value;
+  if (!/^\d{10}$/.test(mobile)) {
+    alert('Please enter a valid 10-digit mobile number.');
+    return false;
+  }
+  return true;
+}
+
+function calculateDOB() {
+  const ageInput = document.getElementById('age').value;
+  if (!/^\d{1,2}\/\d{1,2}\/\d{1,2}$/.test(ageInput)) {
+    alert("Age must be in format: yy/mm/dd");
+    return;
+  }
+  const [yy, mm, dd] = ageInput.split('/').map(Number);
+  const today = new Date();
+  let birthDate = new Date(today.getFullYear() - yy, today.getMonth() - mm, today.getDate() - dd);
+  const dobStr = birthDate.toLocaleDateString('en-GB');
+  document.getElementById('dob').value = dobStr;
+}
+
+function calculateAge() {
+  const dobInput = document.getElementById('dob').value;
+  if (!dobInput) return;
+  const [d, m, y] = dobInput.split('/').map(Number);
+  const birthDate = new Date(y, m - 1, d);
+  const today = new Date();
+  let yy = today.getFullYear() - birthDate.getFullYear();
+  let mm = today.getMonth() - birthDate.getMonth();
+  let dd = today.getDate() - birthDate.getDate();
+  if (dd < 0) { mm -= 1; dd += 30; }
+  if (mm < 0) { yy -= 1; mm += 12; }
+  document.getElementById('age').value = `${yy}/${mm}/${dd}`;
+}
+
+function searchPatientByName() {
+  const name = document.getElementById('name').value.trim();
+  if (!name) return;
+
+  fetch(`/patients/search?name=${encodeURIComponent(name)}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.length === 0) return;
+
+      const tbody = document.getElementById('matchResults');
+      tbody.innerHTML = '';
+      data.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.name}</td>
+          <td>${p.fh_name}</td>
+          <td>${p.address}</td>
+          <td>${p.mobile}</td>
+          <td><button class="btn btn-sm btn-success" onclick='selectPatient(${JSON.stringify(p)})'>Select</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      new bootstrap.Modal(document.getElementById('patientMatchModal')).show();
+    })
+    .catch(console.error);
+}
+
+function selectPatient(p) {
+  document.getElementById('name').value = p.name;
+  document.getElementById('fh_name').value = p.fh_name;
+  document.getElementById('address').value = p.address;
+  document.getElementById('mobile').value = p.mobile;
+  document.getElementById('dob').value = p.dob;
+  document.getElementById('sex').value = p.sex;
+  calculateAge();
+  bootstrap.Modal.getInstance(document.getElementById('patientMatchModal')).hide();
+}
+</script>
+{% endblock %}

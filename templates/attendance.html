@@ -1,18 +1,143 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Attendance Form</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            text-align: center;
-            padding: 40px;
-        }
-    </style>
-</head>
-<body>
-    <h2>Attendance Form</h2>
-    <p>Here you can add the attendance form fields.</p>
-    <a href="/dashboard">Back to Dashboard</a>
-</body>
-</html>
+{% extends 'base.html' %}
+{% block title %}Attendance | Ansar Hospital{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="alert alert-info alert-dismissible fade show" role="alert">
+        {{ messages[0] }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+    <div>
+      <label for="selected_date" class="form-label fw-bold">Select Date:</label>
+      <input type="date" id="selected_date" name="selected_date" class="form-control" onchange="changeDate(this.value)">
+    </div>
+    <div class="text-end mt-2 mt-md-0">
+      <h6 class="mb-0 fw-bold" id="live-clock"></h6>
+    </div>
+  </div>
+
+  <div class="card p-3 shadow-sm mb-4">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label for="staff_combo" class="form-label fw-bold">Select Staff</label>
+        <select id="staff_combo" class="form-select" required>
+          <option value="">-- Select Name --</option>
+          {% for staff in staff_entries %}
+            <option value="{{ staff.label }}">{{ staff.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md">
+        <form method="POST" action="{{ url_for('attendance_bp.check_in') }}">
+          <input type="hidden" name="staff_combo" id="staff_combo_checkin">
+          <input type="hidden" name="submitted_by" value="{{ username }}">
+          <button type="submit" class="btn btn-success w-100" onclick="return copyDropdown('checkin')">Check-In</button>
+        </form>
+      </div>
+      <div class="col-md">
+        <form method="POST" action="{{ url_for('attendance_bp.check_out') }}">
+          <input type="hidden" name="staff_combo" id="staff_combo_checkout">
+          <input type="hidden" name="submitted_by" value="{{ username }}">
+          <button type="submit" class="btn btn-primary w-100" onclick="return copyDropdown('checkout')">Check-Out</button>
+        </form>
+      </div>
+      <div class="col-md">
+        <form method="POST" action="{{ url_for('attendance_bp.export_attendance', format='excel') }}">
+          <input type="hidden" name="start_date" id="start_date_excel">
+          <input type="hidden" name="end_date" id="end_date_excel">
+          <input type="hidden" name="names" value="">
+          <button type="submit" class="btn btn-outline-success w-100">Export Excel</button>
+        </form>
+      </div>
+      <div class="col-md">
+        <form method="POST" action="{{ url_for('attendance_bp.export_attendance', format='pdf') }}">
+          <input type="hidden" name="start_date" id="start_date_pdf">
+          <input type="hidden" name="end_date" id="end_date_pdf">
+          <input type="hidden" name="names" value="">
+          <button type="submit" class="btn btn-outline-danger w-100">Export PDF</button>
+        </form>
+       </div>
+      <!-- Report Link Button -->
+        <div class="d-flex justify-content-end mt-3">
+          <a href="{{ url_for('attendance_bp.attendance_report') }}" class="btn btn-outline-info">📊 Generate Attendance Report</a>
+        </div>
+      </div>
+  </div>
+
+  <div class="table-responsive">
+    {% if records %}
+    <table class="table table-bordered table-striped text-center">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Check-In</th>
+          <th>Check-Out</th>
+          <th>Status</th>
+          <th>Submitted By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in records %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ row.id }}</td>
+          <td>{{ row.name }}</td>
+          <td>{{ row.checkin }}</td>
+          <td>{{ row.checkout }}</td>
+          <td>{{ row.status }}</td>
+          <td>{{ row.submitted_by }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p class="text-muted text-center">No attendance records found for the selected date.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const selectedDate = new URLSearchParams(window.location.search).get('date') || new Date().toISOString().split('T')[0];
+  document.getElementById('selected_date').value = selectedDate;
+  document.getElementById('start_date_excel').value = selectedDate;
+  document.getElementById('end_date_excel').value = selectedDate;
+  document.getElementById('start_date_pdf').value = selectedDate;
+  document.getElementById('end_date_pdf').value = selectedDate;
+
+  function copyDropdown(type) {
+    const selected = document.getElementById('staff_combo').value;
+    if (!selected) {
+      alert("Please select a name before submitting.");
+      return false;
+    }
+    document.getElementById('staff_combo_' + type).value = selected;
+    return true;
+  }
+
+  function changeDate(val) {
+    const query = new URLSearchParams(window.location.search);
+    query.set('date', val);
+    window.location.href = `${window.location.pathname}?${query.toString()}`;
+  }
+
+  function updateClock() {
+    const now = new Date();
+    const day = now.toLocaleDateString('en-IN', { weekday: 'short' });
+    const time = now.toLocaleTimeString('en-IN');
+    const date = now.toLocaleDateString('en-IN');
+    document.getElementById('live-clock').textContent = `${day}, ${date} | ${time}`;
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+</script>
+{% endblock %}

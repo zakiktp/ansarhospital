@@ -9,12 +9,71 @@ from services.user_service import (
 )
 import random
 from datetime import datetime, timedelta
+from config import spreadsheet
+from urllib.parse import urlparse, urljoin
 
-# Use consistent blueprint name
-auth = Blueprint('auth', __name__)
+# 🔒 Auth Blueprint
+auth_bp = Blueprint('auth', __name__)
 
-# Forgot Password
-@auth.route('/forgot-password', methods=['GET', 'POST'])
+# ✅ Safe redirect check
+def is_safe_url(target):
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
+
+# =========================
+# ✅ LOGIN ROUTE
+# =========================
+@auth_bp.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username'].strip()
+        password = request.form['password'].strip()
+
+        login_sheet = spreadsheet.worksheet("Login")
+        records = login_sheet.get_all_records()
+
+        user_row = next((row for row in records if row['User'] == username), None)
+
+        if user_row and user_row['Password'] == password:
+            access = user_row.get('Access', 'all')
+            access_list = [a.strip().lower() for a in access.split(',')] if access else []
+
+            session['user'] = {
+                'username': username,
+                'name': user_row.get('Name', username),
+                'role': user_row.get('Role', 'Staff'),
+                'access': access_list
+            }
+            session['user_name'] = username  # 👈 Used in OPD Submission
+
+            flash("✅ Login successful.", "success")
+
+            next_url = request.args.get('next')
+            if next_url and is_safe_url(next_url):
+                return redirect(next_url)
+
+            return redirect(url_for('dashboard'))
+        else:
+            flash("❌ Invalid credentials.", "danger")
+
+    return render_template("login.html")
+
+
+# =========================
+# ✅ LOGOUT
+# =========================
+@auth_bp.route('/logout')
+def logout():
+    session.clear()
+    flash("You have been logged out.")
+    return redirect(url_for('auth.login'))
+
+
+# =========================
+# ✅ FORGOT PASSWORD
+# =========================
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
         username = request.form.get('username')
@@ -41,8 +100,11 @@ def forgot_password():
 
     return render_template('forgot_password.html')
 
-# Verify OTP
-@auth.route('/verify-otp', methods=['GET', 'POST'])
+
+# =========================
+# ✅ VERIFY OTP
+# =========================
+@auth_bp.route('/verify-otp', methods=['GET', 'POST'])
 def verify_otp():
     if request.method == 'POST':
         entered_otp = request.form.get('otp')
@@ -57,11 +119,15 @@ def verify_otp():
             return redirect(url_for('auth.reset_password'))
         else:
             flash("Invalid or expired OTP.", "danger")
+            return redirect(url_for('auth.verify_otp'))
 
     return render_template('verify_otp.html')
 
-# Reset Password
-@auth.route('/reset-password', methods=['GET', 'POST'])
+
+# =========================
+# ✅ RESET PASSWORD
+# =========================
+@auth_bp.route('/reset-password', methods=['GET', 'POST'])
 def reset_password():
     if request.method == 'POST':
         new_password = request.form.get('password')
@@ -79,6 +145,6 @@ def reset_password():
         update_user_password(email, new_password)
         session.pop('reset_email', None)
         flash("Password successfully updated. Please log in.", "success")
-        return redirect(url_for('auth.login'))  # Adjust if login is in another module
+        return redirect(url_for('auth.login'))
 
     return render_template('reset_password.html')

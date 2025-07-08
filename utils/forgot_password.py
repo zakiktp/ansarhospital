@@ -1,5 +1,5 @@
 from flask import Blueprint, request, render_template, flash, redirect, url_for, session
-from utils.sheets import spreadsheet
+from utils.sheet_utils import spreadsheet
 from utils.otp_utils import generate_otp, get_expiry_time
 from utils.email_sender import send_otp_email
 from datetime import datetime, timedelta
@@ -20,7 +20,7 @@ def forgot_password():
                 email = row.get('Email')
                 if not email:
                     flash("⚠️ No email associated with this user.")
-                    return redirect(url_for('auth_utils_bp.forgot_password'))
+                    return redirect(url_for('auth.forgot_password'))
 
                 otp = generate_otp()
                 expiry = get_expiry_time(10)
@@ -31,7 +31,7 @@ def forgot_password():
 
                 session['otp_user'] = username
                 flash("✅ OTP sent to your email.")
-                return redirect(url_for('auth_utils_bp.verify_otp'))
+                return redirect(url_for('auth.verify_otp'))
 
         flash("❌ Username not found.")
     return render_template('forgot_password.html')
@@ -46,7 +46,7 @@ def verify_otp():
 
     if not username:
         flash("⚠️ Session expired. Please start over.")
-        return redirect(url_for('auth_utils_bp.forgot_password'))
+        return redirect(url_for('auth.forgot_password'))
 
     if request.method == 'POST':
         entered_otp = request.form.get('otp', '').strip()
@@ -58,14 +58,14 @@ def verify_otp():
                 expiry_str = row.get('OTP_Expiry')
                 if not saved_otp or not expiry_str:
                     flash("❌ OTP not found or expired.")
-                    return redirect(url_for('auth_utils_bp.forgot_password'))
+                    return redirect(url_for('auth.forgot_password'))
 
                 expiry = datetime.strptime(expiry_str, '%Y-%m-%d %H:%M:%S')
 
                 if entered_otp == saved_otp and datetime.now() <= expiry:
                     session['otp_verified_user'] = username
                     flash("✅ OTP verified. Please reset your password.")
-                    return redirect(url_for('auth_utils_bp.reset_password'))
+                    return redirect(url_for('auth.reset_password'))
                 else:
                     flash("❌ Invalid or expired OTP.")
                 break
@@ -80,7 +80,7 @@ def reset_password():
 
     if not username:
         flash("⚠️ Session expired. Please start over.")
-        return redirect(url_for('auth_utils_bp.forgot_password'))
+        return redirect(url_for('auth.forgot_password'))
 
     if request.method == 'POST':
         password = request.form.get('password', '').strip()
@@ -88,15 +88,15 @@ def reset_password():
 
         if not password or not confirm:
             flash("⚠️ All fields are required.")
-            return redirect(url_for('auth_utils_bp.reset_password'))
+            return redirect(url_for('auth.reset_password'))
 
         if password != confirm:
             flash("❌ Passwords do not match.")
-            return redirect(url_for('auth_utils_bp.reset_password'))
+            return redirect(url_for('auth.reset_password'))
 
         if len(password) < 6:
             flash("❌ Password must be at least 6 characters long.")
-            return redirect(url_for('auth_utils_bp.reset_password'))
+            return redirect(url_for('auth.reset_password'))
 
         # Update password in sheet
         data = sheet.get_all_records()

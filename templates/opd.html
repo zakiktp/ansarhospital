@@ -1,18 +1,257 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>OPD Form</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            text-align: center;
-            padding: 40px;
-        }
-    </style>
-</head>
-<body>
-    <h2>OPD Form</h2>
-    <p>Here you can add the OPD form fields.</p>
-    <a href="/dashboard">Back to Dashboard</a>
-</body>
-</html>
+{% extends 'base.html' %}
+{% block title %}OPD Entry{% endblock %}
+{% block content %}
+<style>
+  body { background: #f4f7fb; }
+  .opd-card {
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  }
+  .opd-card h5 {
+    background-color: #e6f2ff;
+    padding: 12px 16px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    color: #005a9c;
+    font-weight: 600;
+    margin: -20px -20px 15px;
+  }
+  .form-control, .form-select { border-radius: 6px; }
+  .table thead { background-color: #005a9c; color: white; }
+  .table tbody { font-size: 13px; }
+  .btn-outline-secondary:hover,
+  .btn-outline-secondary:focus {
+    background-color: #005a9c;
+    color: white;
+  }
+  #live-clock {
+    position: fixed;
+    top: 10px;
+    right: 15px;
+    background: #0d6efd;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 14px;
+    z-index: 9999;
+    cursor: pointer;
+  }
+</style>
+
+<div id="live-clock" title="Click to toggle 12/24-hour">--:--:--</div>
+
+<!-- Search Patient Button -->
+<div class="text-end mb-2">
+  <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#patientSearchModal">Search Patient</button>
+</div>
+
+{% include "shared/patient_search_modal.html" %}
+
+<div class="container-fluid">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="mb-3">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Form -->
+  <div class="card opd-card mb-3">
+    <div class="card-body">
+      <h5>🏥 OPD Patient Entry</h5>
+      <form method="POST" onsubmit="return validateMobile();">
+        <div class="row g-2 mb-2">
+          <div class="col-md-3"><input type="text" class="form-control" name="name" id="name" placeholder="Name" required></div>
+          <div class="col-md-3"><input type="text" class="form-control" name="fh_name" id="hf_name" placeholder="F/H Name" required></div>
+          <div class="col-md-2"><input type="text" class="form-control" name="age" id="age" placeholder="Age yy/mm/dd" required pattern="\d{1,2}/\d{1,2}/\d{1,2}" onblur="calculateDOB()"></div>
+          <div class="col-md-2"><input type="text" class="form-control" name="dob" id="dob" placeholder="DOB dd/mm/yyyy" onblur="calculateAge()"></div>
+          <div class="col-md-2">
+            <select class="form-select" name="sex" id="gender">
+              <option value="F" selected>Female</option>
+              <option value="M">Male</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row g-2 mb-2">
+          <div class="col-md-6">
+            <select class="form-select" name="address" id="address" required>
+              {% for addr in address_list %}
+                <option value="{{ addr }}">{{ addr }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3"><input type="tel" class="form-control" name="mobile" id="mobile" placeholder="Mobile (10 digits)" pattern="\d{10}" maxlength="10" required></div>
+          <div class="col-md-3"><input type="number" class="form-control" name="fee" placeholder="Fee Received" required></div>
+        </div>
+
+        <div class="row g-2 mb-2">
+          <div class="col-md-6">
+            <select class="form-select" name="doctor" required>
+              <option value="" disabled selected>Select Doctor</option>
+              <option value="Dr.M.Zaki Ansari">Dr.M.Zaki Ansari</option>
+              <option value="Dr.Mrs.Nishat Ansari">Dr.Mrs.Nishat Ansari</option>
+              <option value="Dr.M.Affan Zaki Ansari">Dr.M.Affan Zaki Ansari</option>
+              <option value="Dr.Mrs.Shanaz">Dr.Mrs.Shanaz</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Hidden Fields -->
+        <input type="hidden" id="patient_id" name="patient_id">
+        <input type="hidden" id="blood_group" name="blood_group">
+
+        <div class="text-end">
+          <button type="submit" class="btn btn-primary px-4">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Search Filter -->
+  <div class="card opd-card mb-3">
+    <div class="card-body">
+      <form class="row g-2 align-items-center" method="get">
+        <div class="col-md-6"><input type="text" class="form-control" name="search_name" placeholder="Search Name / F/H Name / ID / Mobile / Address" value="{{ request.args.get('search_name', '') }}"></div>
+        <div class="col-md-2"><input type="date" class="form-control" name="start_date" value="{{ request.args.get('start_date', '') }}"></div>
+        <div class="col-md-2"><input type="date" class="form-control" name="end_date" value="{{ request.args.get('end_date', '') }}"></div>
+        <div class="col-md-2">
+          <select class="form-select" name="doctor">
+            <option value="">All Doctors</option>
+            <option value="Dr.M.Zaki Ansari" {% if request.args.get('doctor') == 'Dr.M.Zaki Ansari' %}selected{% endif %}>Dr.M.Zaki Ansari</option>
+            <option value="Dr.Mrs.Nishat Ansari" {% if request.args.get('doctor') == 'Dr.Mrs.Nishat Ansari' %}selected{% endif %}>Dr.Mrs.Nishat Ansari</option>
+            <option value="Dr.M.Affan Zaki Ansari" {% if request.args.get('doctor') == 'Dr.M.Affan Zaki Ansari' %}selected{% endif %}>Dr.M.Affan Zaki Ansari</option>
+            <option value="Dr.Mrs.Shanaz" {% if request.args.get('doctor') == 'Dr.Mrs.Shanaz' %}selected{% endif %}>Dr.Mrs.Shanaz</option>
+          </select>
+        </div>
+        <div class="col-md-2 d-flex justify-content-end gap-2">
+          <button class="btn btn-outline-primary">Search</button>
+          <a href="{{ url_for('opd.opd_entry') }}" class="btn btn-outline-secondary">Clear</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Records -->
+  <div class="card opd-card">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">📋 Patient Records</h5>
+        <div>
+          <a href="{{ url_for('opd.export_opd_data', format='csv') }}" class="btn btn-sm btn-outline-secondary me-1">CSV</a>
+          <a href="{{ url_for('opd.export_opd_data', format='excel') }}" class="btn btn-sm btn-outline-secondary me-1">Excel</a>
+          <a href="{{ url_for('opd.export_opd_data', format='pdf') }}" class="btn btn-sm btn-outline-secondary">PDF</a>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm table-striped mb-0">
+          <thead class="text-center">
+            <tr>
+              <th>NO</th>
+              <th>Timestamp</th>
+              <th>Name</th>
+              <th>F/H Name</th>
+              <th>ID</th>
+              <th>Age</th>
+              <th>DOB</th>
+              <th>Gender</th>
+              <th>Address</th>
+              <th>Mobile</th>
+              <th>Fee</th>
+              <th>Submitted By</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in opd_records %}
+            <tr>
+              <td class="text-center">{{ loop.index }}</td>
+              <td class="text-center">{{ row.TIMESTAMP }}</td>
+              <td>{{ row.NAME }}</td>
+              <td>{{ row['F/H Name'] }}</td>
+              <td class="text-center">{{ row.ID }}</td>
+              <td class="text-center">{{ row.AGE }}</td>
+              <td class="text-center">{{ row.DOB }}</td>
+              <td class="text-center">{{ row.Gender }}</td>
+              <td>{{ row.ADDRESS }}</td>
+              <td class="text-center">{{ row.MOBILE }}</td>
+              <td class="text-end">{{ row['FEE RECD'] }}</td>
+              <td>{{ row['Submitted By'] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function validateMobile() {
+  const mobile = document.getElementById('mobile').value;
+  if (!/^\d{10}$/.test(mobile)) {
+    alert('Please enter a valid 10-digit mobile number.');
+    return false;
+  }
+  return true;
+}
+
+function calculateDOB() {
+  const ageInput = document.getElementById('age').value;
+  if (!/^\d{1,2}\/\d{1,2}\/\d{1,2}$/.test(ageInput)) return;
+  const [yy, mm, dd] = ageInput.split('/').map(Number);
+  const today = new Date();
+  let birthDate = new Date(today.getFullYear() - yy, today.getMonth() - mm, today.getDate() - dd);
+  document.getElementById('dob').value = birthDate.toLocaleDateString('en-GB');
+}
+
+function calculateAge() {
+  const dobInput = document.getElementById('dob').value;
+  if (!dobInput) return;
+  const [d, m, y] = dobInput.split('/').map(Number);
+  const birthDate = new Date(y, m - 1, d);
+  const today = new Date();
+  let yy = today.getFullYear() - birthDate.getFullYear();
+  let mm = today.getMonth() - birthDate.getMonth();
+  let dd = today.getDate() - birthDate.getDate();
+  if (dd < 0) { mm--; dd += 30; }
+  if (mm < 0) { yy--; mm += 12; }
+  document.getElementById('age').value = `${yy}/${mm}/${dd}`;
+}
+
+let is24hr = true;
+function updateClock() {
+  const now = new Date();
+  const options = {
+    hour: 'numeric', minute: 'numeric', second: 'numeric',
+    hour12: !is24hr,
+    weekday: 'short',
+    year: 'numeric', month: 'short', day: 'numeric'
+  };
+  document.getElementById("live-clock").innerText = now.toLocaleString('en-IN', options);
+}
+document.getElementById("live-clock").onclick = () => { is24hr = !is24hr; };
+setInterval(updateClock, 1000);
+updateClock();
+
+function selectPatient(p) {
+  document.getElementById('name').value = p.name;
+  document.getElementById('hf_name').value = p.hf_name;
+  document.getElementById('mobile').value = p.mobile;
+  document.getElementById('dob').value = p.dob || '';
+  document.getElementById('gender').value = p.gender || 'F';
+  document.getElementById('address').value = p.address;
+  document.getElementById('patient_id').value = p.id || '';
+  document.getElementById('blood_group').value = p.blood_group || '';
+  calculateAge();
+  bootstrap.Modal.getInstance(document.getElementById('patientSearchModal')).hide();
+}
+</script>
+{% endblock %}

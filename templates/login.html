@@ -20,7 +20,7 @@
   {% endif %}
 {% endwith %}
 
-<form method="POST" action="{{ url_for('module_login', module=module) }}">
+<form method="POST" action="{{ url_for('auth.login', module=module) }}">
   <div class="form-floating mb-3">
     <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
     <label for="username">Username</label>
@@ -35,7 +35,8 @@
 </form>
 
 <div class="text-center mt-4">
-  <a href="{{ url_for('auth_utils_bp.forgot_password') }}" class="text-decoration-none small text-primary">
+  <a href="{{ url_for('auth.forgot_password') }}" class="text-decoration-none small text-primary">
+
     ❓ Forgot password?
   </a>
 </div>
