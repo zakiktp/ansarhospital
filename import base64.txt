@@ -1,0 +1,11 @@
+import base64
+
+# Provide the path to your credentials file
+file_path = 'D:/Projects/ansarhospital/credentials/credentials.json'
+
+# Read the file and encode it to base64
+with open(file_path, 'rb') as file:
+    encoded_credentials = base64.b64encode(file.read()).decode('utf-8')
+
+# Print the base64 encoded string
+print(encoded_credentials)

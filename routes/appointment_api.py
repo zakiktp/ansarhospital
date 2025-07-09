@@ -134,11 +134,13 @@ def save_appointment():
             data.get("age"),
             dob,
             data.get("address") if data.get("address") != "OTHER" else data.get("new_address"),
+            data.get("city"),  # ✅ Add City here
             data.get("mobile"),
             data.get("staff"),
             data.get("status"),
             data.get("doctor")
         ]
+
 
         sheet.append_row(row)
         print("✅ Appointment saved:", row)

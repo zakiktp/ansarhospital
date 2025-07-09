@@ -1,0 +1,13 @@
+import base64
+
+# Your Base64-encoded Google credentials
+encoded_credentials = '''credentials.b64.txt'''
+
+# Decode the credentials
+decoded_credentials = base64.b64decode(encoded_credentials).decode('utf-8')
+
+# Save the decoded credentials into a .json file
+with open('decoded_credentials.json', 'w') as f:
+    f.write(decoded_credentials)
+
+print("Decoded credentials saved to 'decoded_credentials.json'.")

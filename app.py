@@ -1,3 +1,5 @@
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from dotenv import load_dotenv
 from pathlib import Path
@@ -53,6 +55,11 @@ from routes.attendance_routes import attendance_bp
 # Flask app setup
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'fallback-key')
+
+limiter = Limiter(key_func=get_remote_address, default_limits=["60 per minute"])
+limiter.init_app(app)
+
+
 
 # Utility functions
 def get_today_appointment_count():

@@ -68,16 +68,19 @@
       </div>
     </div>
 
-    <!-- Row 5: Address -->
+    <!-- Row 5: Address and City -->
     <div class="row mb-2">
-      <div class="col-md-12">
-        <select name="address" class="form-control">
-          {% for addr in address_list %}
-            <option value="{{ addr }}" {{ 'selected' if record['Address'] == addr else '' }}>{{ addr }}</option>
-          {% endfor %}
-        </select>
-      </div>
+    <div class="col-md-6">
+      <select name="address" class="form-control">
+        {% for addr in address_list %}
+          <option value="{{ addr }}" {{ 'selected' if record['Address'] == addr else '' }}>{{ addr }}</option>
+        {% endfor %}
+      </select>
     </div>
+    <div class="col-md-6">
+      <input type="text" name="city" class="form-control" placeholder="City" value="{{ record['City'] }}">
+    </div>
+  </div>
 
     <!-- Row 6: Staff, Status, Doctor -->
     <div class="row mb-2">

@@ -3,6 +3,8 @@ from datetime import datetime
 from config import spreadsheet, MODULES
 from utils.auth_utils import login_required, access_required
 import pytz
+from flask import send_file
+import pandas as pd
 
 opd_bp = Blueprint('opd', __name__, url_prefix='/opd')
 
@@ -35,6 +37,7 @@ def opd_entry():
                 "gender": row.get("Gender", "F"),
                 "dob": row.get("DOB", ""),
                 "address": row.get("Address", ""),
+                "city": row.get("City", ""),
                 "id": row.get("ID", ""),
                 "blood_group": row.get("B.Group", "")
             })
@@ -48,6 +51,7 @@ def opd_entry():
         dob = form.get('dob').strip()
         gender = form.get('sex')
         address = form.get('address').strip()
+        city = form.get('city').strip()
         mobile = form.get('mobile').strip()
         fee = form.get('fee').strip()
         doctor = form.get('doctor').strip()
@@ -60,10 +64,28 @@ def opd_entry():
 
         now = datetime.now(pytz.timezone("Asia/Kolkata"))
         timestamp = now.strftime('%d/%m/%Y %H:%M:%S')
+        today_date = now.strftime('%d/%m/%Y')
+
+        all_opd = sheet.get_all_records()
+        next_no = str(len(all_opd) + 1)
 
         new_row = [
-            timestamp, name, hf_name, patient_id, age, dob,
-            gender, address, mobile, fee, staff, doctor, blood_group
+            next_no,         # No
+            today_date,      # Date
+            patient_id,      # ID
+            form.get('prefix', ''),
+            name,
+            form.get('title', ''),
+            hf_name,
+            gender,
+            age,
+            dob,
+            address,
+            mobile,
+            float(fee),
+            staff,
+            "REPORTED",
+            doctor
         ]
 
         try:
@@ -87,3 +109,81 @@ def opd_entry():
         address_list=address_list,
         appointment_list=appointment_list
     )
+
+@opd_bp.route('/export/<format>', methods=['GET'])
+@login_required
+@access_required('opd')
+def export_opd_data(format):
+    sheet = spreadsheet.worksheet("OPD")
+    data = sheet.get_all_records()
+
+    df = pd.DataFrame(data)
+
+    filename = f"OPD_Export_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    if format == 'csv':
+        path = f"{filename}.csv"
+        df.to_csv(path, index=False)
+        return send_file(path, as_attachment=True)
+
+    elif format == 'excel':
+        path = f"{filename}.xlsx"
+        df.to_excel(path, index=False)
+        return send_file(path, as_attachment=True)
+
+    elif format == 'pdf':
+        flash("PDF export not yet implemented.", "warning")
+        return redirect(url_for('opd.opd_entry'))
+
+    else:
+        flash("Unsupported export format.", "danger")
+        return redirect(url_for('opd.opd_entry'))
+
+@opd_bp.route('/copy_appointments_to_opd')
+@login_required
+@access_required('opd')
+def copy_appointments_to_opd():
+    appointment_sheet = spreadsheet.worksheet("Appointment")
+    opd_sheet = spreadsheet.worksheet("OPD")
+
+    appointments = appointment_sheet.get_all_records()
+    opd_records = opd_sheet.get_all_records()
+    existing_ids = {r.get("ID", "") for r in opd_records}
+
+    new_rows = []
+    today_str = datetime.now(pytz.timezone("Asia/Kolkata")).strftime('%d/%m/%Y')
+
+    for appt in appointments:
+        appt_date = appt.get("Date", "")
+        appt_date_part = appt_date.split(",")[0].strip()
+        if appt_date_part != today_str:
+            continue
+
+        if appt.get("ID", "") in existing_ids:
+            continue  # Skip if already copied
+
+        new_row = [
+            str(len(opd_records) + len(new_rows) + 1),
+            appt.get("Date", ""),
+            appt.get("ID", ""),
+            appt.get("Prefix", ""),
+            appt.get("Name", ""),
+            appt.get("Titles", ""),
+            appt.get("H/F Name", ""),
+            appt.get("Gender", ""),
+            appt.get("Age", ""),
+            appt.get("DOB", ""),
+            appt.get("Address", ""),
+            appt.get("Mobile", ""),
+            "",  # Fee Recd
+            appt.get("Staff", ""),
+            appt.get("Status", ""),
+            appt.get("Doctor", "")
+        ]
+        new_rows.append(new_row)
+
+    if new_rows:
+        opd_sheet.append_rows(new_rows, value_input_option="USER_ENTERED")
+
+    flash(f"✅ {len(new_rows)} appointment(s) copied to OPD sheet.", "success")
+    return redirect(url_for('opd.opd_entry'))

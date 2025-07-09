@@ -30,10 +30,6 @@ else:
 
 creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
 
-# Service account file path for legacy functions
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-SERVICE_ACCOUNT_FILE = os.path.join(os.getcwd(), 'credentials.json')
-
 # Authorize client
 client = gspread.authorize(creds)
 
@@ -55,19 +51,20 @@ for attempt in range(3):
 # Default worksheet
 worksheet = spreadsheet.worksheet("Appointment")
 
+# Caches
+_appointment_cache = {'records': [], 'timestamp': 0}
+_patients_cache = {'records': [], 'timestamp': 0}
+
+
 # -------------------- Basic Utilities --------------------
 
 def get_sheet_service():
-    creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
     return gspread.authorize(creds)
-
 
 def read_sheet_as_dict(spreadsheet_name, worksheet_name):
     gc = get_sheet_service()
     sheet = gc.open(spreadsheet_name).worksheet(worksheet_name)
     return sheet.get_all_records()
-
-
 
 def append_to_sheet(spreadsheet_name, worksheet_name, row_data):
     gc = get_sheet_service()
@@ -85,12 +82,16 @@ def read_from_google_sheet(sheet_name):
 # -------------------- OPD Logic --------------------
 
 def get_today_appointment_count():
-    today = datetime.now().strftime('%Y-%m-%d')
     try:
-        records = worksheet.get_all_records()
-        return sum(1 for row in records if row.get('appointment_date') == today)
+        now = time.time()
+        if now - _appointment_cache['timestamp'] > 60:
+            _appointment_cache['records'] = worksheet.get_all_records()
+            _appointment_cache['timestamp'] = now
+
+        today = datetime.now().strftime('%d/%m/%Y')
+        return sum(1 for row in _appointment_cache['records'] if row.get('Date') == today)
     except Exception as e:
-        print(f"Error fetching appointment count: {e}")
+        print("[get_today_appointment_count] Error:", e)
         return 0
 
 def safe_load_sheet(sheet_name, expected_headers=None):
@@ -163,9 +164,13 @@ def get_patient_id_by_match(data):
 
 def find_existing_patient_id(name, fh_name, address, mobile):
     try:
-        patients_sheet = spreadsheet.worksheet("Patients")
-        records = patients_sheet.get_all_records()
-        for row in records:
+        now = time.time()
+        if now - _patients_cache['timestamp'] > 60:
+            sheet = spreadsheet.worksheet("Patients")
+            _patients_cache['records'] = sheet.get_all_records()
+            _patients_cache['timestamp'] = now
+
+        for row in _patients_cache['records']:
             if (
                 row.get("Name", "").strip().lower() == name.strip().lower() and
                 row.get("F/H Name", "").strip().lower() == fh_name.strip().lower() and
@@ -178,43 +183,28 @@ def find_existing_patient_id(name, fh_name, address, mobile):
     return None
 
 def generate_new_id():
-    """
-    Generates a new unique ID like AH0001, AH0002 based on the OPD sheet.
-    """
     try:
         sheet = get_gsheet()
         ids = [row['ID'] for row in sheet.get_all_records() if row.get('ID')]
-        max_id = 0
-        for i in ids:
-            if i.startswith("AH"):
-                try:
-                    max_id = max(max_id, int(i[2:]))
-                except:
-                    continue
+        max_id = max((int(i[2:]) for i in ids if i.startswith("AH")), default=0)
         return f"AH{max_id + 1:04d}"
     except Exception as e:
         print("[generate_new_id] Error:", e)
         return "AH0001"
 
-
 def generate_new_patient_id():
     try:
-        patients_sheet = spreadsheet.worksheet("Patients")
-        ids = [row['ID'] for row in patients_sheet.get_all_records() if row.get('ID')]
-        max_id = 0
-        for i in ids:
-            try:
-                if i.startswith("AH"):
-                    max_id = max(max_id, int(i[2:]))
-            except:
-                continue
+        sheet = spreadsheet.worksheet("Patients")
+        ids = sheet.col_values(1)[1:]  # Skip header
+        max_id = max((int(i[2:]) for i in ids if i.startswith("AH")), default=0)
         return f"AH{max_id + 1:04d}"
-    except:
+    except Exception as e:
+        print("[generate_new_patient_id] Error:", e)
         return "AH0001"
 
 def add_new_patient(patient_data):
     try:
-        patients_sheet = spreadsheet.worksheet("Patients")
+        sheet = spreadsheet.worksheet("Patients")
         now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         row = [
             patient_data["ID"],
@@ -226,7 +216,7 @@ def add_new_patient(patient_data):
             patient_data.get("Sex", "F"),
             now
         ]
-        patients_sheet.append_row(row, value_input_option="USER_ENTERED")
+        sheet.append_row(row, value_input_option="USER_ENTERED")
         print(f"✅ New patient added: {patient_data['ID']}")
     except Exception as e:
         print("[add_new_patient] Error:", e)
@@ -256,8 +246,8 @@ def find_patients_by_name(name):
 
 def get_submitter_full_name(user_id):
     try:
-        login_sheet = spreadsheet.worksheet("Login")
-        records = login_sheet.get_all_records()
+        sheet = spreadsheet.worksheet("Login")
+        records = sheet.get_all_records()
         for row in records:
             if row.get("User", "").strip().lower() == user_id.strip().lower():
                 return row.get("Name", "UNKNOWN").strip()
@@ -266,8 +256,8 @@ def get_submitter_full_name(user_id):
     return "UNKNOWN"
 
 def get_address_list():
-    dropdown_sheet = spreadsheet.worksheet("Dropdownlist")
-    addresses = dropdown_sheet.col_values(1)
+    sheet = spreadsheet.worksheet("Dropdownlist")
+    addresses = sheet.col_values(1)
     return [addr.strip() for addr in addresses if addr.strip()]
 
 def append_to_google_sheet(sheet_name, row_data):

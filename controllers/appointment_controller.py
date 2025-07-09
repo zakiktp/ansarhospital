@@ -11,8 +11,7 @@ from fpdf import FPDF
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
-
-# Setup Google credentials
+# ✅ Setup Google credentials
 scope = ['https://www.googleapis.com/auth/drive']
 creds_json = os.environ.get("GOOGLE_CREDS_JSON")
 if not creds_json:
@@ -58,7 +57,6 @@ def appointment_main():
     dropdown_sheet = spreadsheet.worksheet("Dropdownlist")
     address_list = sorted(set(r.strip() for r in dropdown_sheet.col_values(1) if r.strip()))
 
-    # 📥 Extract GET search parameters
     filters = {
         "name": request.args.get("name", "").strip(),
         "hf_name": request.args.get("hf_name", "").strip(),
@@ -69,10 +67,15 @@ def appointment_main():
         "to_date": request.args.get("to_date", "").strip()
     }
 
-    print("📥 Appointment filters:", filters)
-
     try:
-        # 🛰️ Call internal API for filtered appointments
+        from urllib.parse import urlencode
+
+        # Check if any filter is applied
+        if not any(filters.values()):
+            today_str = datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d")
+            filters["from_date"] = today_str
+            filters["to_date"] = today_str
+
         query = urlencode(filters)
         api_url = f"http://127.0.0.1:5000/api/search_appointments?{query}"
         response = requests.get(api_url)
@@ -81,21 +84,20 @@ def appointment_main():
         flash(f"❌ Failed to load appointments: {e}", "danger")
         all_records = []
 
-    # 🎯 Normalize field names for table rendering
     for row in all_records:
         row["HF_Name"] = row.get("H/F Name", "")
         row["B_Group"] = row.get("B.Group", "")
         row["DOB"] = row.get("DOB", "")
         row["Title"] = row.get("Titles", "")
+        row["City"] = row.get("City", "")  # ✅ add this
         row["MobileNo"] = row.get("Mobile", "")
         row["StaffName"] = row.get("Staff", "")
         row["VisitStatus"] = row.get("Status", "").strip().upper()
 
-    # 📊 Stats for summary boxes
     stats = {
         'total': len(all_records),
-        'reported': sum(1 for r in all_records if r.get('VisitStatus', '') == 'REPORTED'),
-        'pending': sum(1 for r in all_records if r.get('VisitStatus', '') != 'REPORTED')
+        'reported': sum(1 for r in all_records if r.get('VisitStatus') == 'REPORTED'),
+        'pending': sum(1 for r in all_records if r.get('VisitStatus') != 'REPORTED')
     }
 
     return render_template(
@@ -110,7 +112,6 @@ def appointment_main():
         selected_status=''
     )
 
-
 @appointment_bp.route('/edit/<id>', methods=['GET', 'POST'])
 def edit_appointment(id):
     sheet = spreadsheet.worksheet("Appointment")
@@ -122,7 +123,7 @@ def edit_appointment(id):
     row_index = next((i for i, row in enumerate(records, start=2) if row.get("ID") == id), None)
     if not row_index:
         flash("Record not found", "danger")
-        return redirect(url_for('appointment_bp.view_appointments'))
+        return redirect(url_for('appointment_bp.appointment_main'))
 
     if request.method == 'POST':
         data = request.form.to_dict()
@@ -137,23 +138,23 @@ def edit_appointment(id):
         if final_address == "OTHER":
             final_address = data.get("new_address", "").strip().upper()
 
-        # Prepare updated row for Appointment
         updated_row = [
-            row_index - 1,
-            records[row_index - 2]["Date"],
-            data.get("id", ""),
-            data.get("prefix", ""),
-            data.get("name", ""),
-            data.get("title", ""),
-            data.get("hf_name", ""),
-            data.get("gender", ""),
-            data.get("age", ""),
-            dob,
-            final_address,
-            data.get("mobile", ""),
-            data.get("staff", ""),
-            data.get("status", ""),
-            data.get("doctor", "")
+            row_index - 1,                       # No
+            records[row_index - 2]["Date"],     # Date
+            data.get("id", ""),                 # ID
+            data.get("prefix", ""),             # Prefix
+            data.get("name", ""),               # Name
+            data.get("title", ""),              # Titles
+            data.get("hf_name", ""),            # H/F Name
+            data.get("gender", ""),             # Gender
+            data.get("age", ""),                # Age
+            dob,                                # DOB
+            final_address,                      # Address
+            data.get("city", ""),               # ✅ City
+            data.get("mobile", ""),             # Mobile
+            data.get("staff", ""),              # Staff
+            data.get("status", ""),             # Status
+            data.get("doctor", "")              # Doctor
         ]
 
         try:
@@ -161,14 +162,13 @@ def edit_appointment(id):
             sheet.insert_row(updated_row, row_index)
             flash("✅ Appointment updated successfully!", "success")
 
-            # ✅ Update Patient sheet with only required columns
             patient_records = patient_sheet.get_all_values()
             headers = patient_records[0]
             id_col = headers.index("ID") if "ID" in headers else 0
 
             for i, row in enumerate(patient_records[1:], start=2):
                 if row and row[id_col] == id:
-                    city = row[10] if len(row) > 10 else ""  # Preserve city
+                    city = data.get("city", "")  # ✅ Use submitted City
                     update_row = [
                         data.get("id", ""),
                         data.get("prefix", ""),
@@ -177,17 +177,15 @@ def edit_appointment(id):
                         data.get("hf_name", ""),
                         data.get("mobile", ""),
                         final_address,
-                        city,
+                        city,                       # ✅ Correct city used
                         data.get("age", ""),
                         data.get("gender", ""),
                         dob
                     ]
-                    # Update A to K (11 columns)
                     patient_sheet.update(f"A{i}:K{i}", [update_row])
-                    print(f"✅ Patient sheet (trimmed) updated for ID: {id}")
+                    print(f"✅ Patient sheet updated with new City for ID: {id}")
                     break
 
-            # ✅ Add new address to Dropdownlist, preserve other columns
             if data.get("address") == "OTHER" and final_address:
                 try:
                     dropdown_sheet = spreadsheet.worksheet("Dropdownlist")
@@ -197,10 +195,8 @@ def edit_appointment(id):
                     if final_address not in col_a:
                         col_a.append(final_address)
                         sorted_a = sorted(set(col_a))
-
                         max_rows = max(len(sorted_a), len(all_rows))
                         updated_rows = []
-
                         for idx in range(max_rows):
                             existing = all_rows[idx] if idx < len(all_rows) else [""]
                             new_row = [sorted_a[idx]] if idx < len(sorted_a) else [""]

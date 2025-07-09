@@ -1,22 +1,23 @@
 <div class="modal fade" id="patientSearchModal" tabindex="-1" aria-labelledby="patientSearchModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+  <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="patientSearchModalLabel">Select Appointment Patient</h5>
+        <h5 class="modal-title" id="patientSearchModalLabel">Select Appointment</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         {% if appointment_list %}
         <div class="table-responsive">
-          <table class="table table-bordered table-sm table-striped">
-            <thead class="table-info text-center">
+          <table class="table table-sm table-bordered table-striped">
+            <thead class="table-primary text-center">
               <tr>
+                <th>No</th>
                 <th>Name</th>
                 <th>H/F Name</th>
                 <th>Mobile</th>
                 <th>Gender</th>
-                <th>Address</th>
                 <th>DOB</th>
+                <th>Address</th>
                 <th>ID</th>
                 <th>Blood Group</th>
                 <th>Select</th>
@@ -25,24 +26,25 @@
             <tbody>
               {% for p in appointment_list %}
               <tr>
+                <td class="text-center">{{ loop.index }}</td>
                 <td>{{ p.name }}</td>
                 <td>{{ p.hf_name }}</td>
                 <td>{{ p.mobile }}</td>
-                <td>{{ p.gender }}</td>
+                <td class="text-center">{{ p.gender }}</td>
+                <td class="text-center">{{ p.dob }}</td>
                 <td>{{ p.address }}</td>
-                <td>{{ p.dob }}</td>
-                <td>{{ p.id }}</td>
-                <td>{{ p.blood_group }}</td>
+                <td class="text-center">{{ p.id }}</td>
+                <td class="text-center">{{ p.blood_group }}</td>
                 <td class="text-center">
-                  <button class="btn btn-sm btn-success" onclick='selectPatient({
-                    name: "{{ p.name }}",
-                    hf_name: "{{ p.hf_name }}",
-                    mobile: "{{ p.mobile }}",
-                    gender: "{{ p.gender }}",
-                    address: "{{ p.address }}",
-                    dob: "{{ p.dob }}",
-                    id: "{{ p.id }}",
-                    blood_group: "{{ p.blood_group }}"
+                  <button type="button" class="btn btn-sm btn-outline-primary" onclick='selectPatient({
+                    "name": "{{ p.name }}",
+                    "hf_name": "{{ p.hf_name }}",
+                    "mobile": "{{ p.mobile }}",
+                    "gender": "{{ p.gender }}",
+                    "dob": "{{ p.dob }}",
+                    "address": "{{ p.address }}",
+                    "id": "{{ p.id }}",
+                    "blood_group": "{{ p.blood_group }}"
                   })'>Select</button>
                 </td>
               </tr>
@@ -51,7 +53,7 @@
           </table>
         </div>
         {% else %}
-          <p class="text-muted">No appointments found for today.</p>
+        <p class="text-muted">No appointments found for today.</p>
         {% endif %}
       </div>
     </div>
