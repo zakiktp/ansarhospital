@@ -123,6 +123,13 @@ def list_routes():
     for route in sorted(routes):
         click.echo(route)
 
+from markupsafe import Markup
+import json
+
+@app.template_filter('tojson')
+def tojson_filter(value):
+    return Markup(json.dumps(value))
+
 # Run
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)

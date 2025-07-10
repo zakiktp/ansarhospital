@@ -7,8 +7,10 @@ from datetime import datetime
 opd_bp = Blueprint("opd", __name__, url_prefix="/opd")
 
 SHEET_NAME = "OPD"
-SHEET_HEADERS = ["Timestamp", "Name", "F/H Name", "ID", "Age", "DOB", "Gender", "Address", "Mobile", "Fee Recd", "Submitted By", "Doctor"]
-
+SHEET_HEADERS = [
+    "No", "Date", "ID", "Prefix", "Name", "Titles", "H/F Name", "Gender",
+    "Age", "DOB", "Address", "City", "Mobile", "Fee Recd", "Staff", "Status", "Doctor"
+]
 @opd_bp.route("/", methods=["GET", "POST"])
 @login_required
 def opd_entry():
@@ -18,20 +20,25 @@ def opd_entry():
         form = request.form
         now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         new_row = [
-            "",  # NO (auto-generated in sheet)
-            now,
-            form.get("name"),
-            form.get("fh_name"),
-            form.get("patient_id", ""),
-            form.get("age"),
-            form.get("dob"),
-            form.get("sex"),
-            form.get("address"),
-            form.get("mobile"),
-            form.get("fee"),
-            username,
-            form.get("doctor")
+            "",  # No (auto-generated)
+            now,  # Date
+            form.get("patient_id", ""),  # ID
+            form.get("prefix", ""),  # Prefix
+            form.get("name", ""),
+            form.get("title", ""),  # Titles (e.g., S/O, W/O)
+            form.get("fh_name", ""),
+            form.get("sex", ""),
+            form.get("age", ""),
+            form.get("dob", ""),
+            form.get("address", ""),
+            form.get("city", ""),
+            form.get("mobile", ""),
+            form.get("fee", ""),
+            username,  # Staff
+            "NOT REPORTED",  # Status
+            form.get("doctor", "")
         ]
+
         append_to_google_sheet(SHEET_NAME, new_row)
         flash("OPD entry saved successfully", "success")
         return redirect(url_for("opd.opd_entry"))

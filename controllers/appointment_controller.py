@@ -85,14 +85,21 @@ def appointment_main():
         all_records = []
 
     for row in all_records:
-        row["HF_Name"] = row.get("H/F Name", "")
-        row["B_Group"] = row.get("B.Group", "")
-        row["DOB"] = row.get("DOB", "")
-        row["Title"] = row.get("Titles", "")
-        row["City"] = row.get("City", "")  # ✅ add this
-        row["MobileNo"] = row.get("Mobile", "")
-        row["StaffName"] = row.get("Staff", "")
-        row["VisitStatus"] = row.get("Status", "").strip().upper()
+        row["id"] = row.get("ID", "")
+        row["prefix"] = row.get("Prefix", "")
+        row["name"] = row.get("Name", "")
+        row["titles"] = row.get("Titles", "")
+        row["hf_name"] = row.get("H/F Name", "")
+        row["gender"] = row.get("Gender", "")
+        row["dob"] = row.get("DOB", "")
+        row["age"] = row.get("Age", "")
+        row["address"] = row.get("Address", "")
+        row["city"] = row.get("City", "")
+        row["mobile"] = row.get("Mobile", "")
+        row["blood_group"] = row.get("B.Group", "")
+        row["staff"] = row.get("Staff", "")
+        row["doctor"] = row.get("Doctor", "")
+        row["status"] = row.get("Status", "")
 
     stats = {
         'total': len(all_records),

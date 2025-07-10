@@ -63,6 +63,10 @@ def generate_patient_id():
 from flask import jsonify
 from config import spreadsheet
 
+EXPECTED_HEADERS = [
+    "ID", "Prefix", "Name", "Title", "H/F Name", "Mobile",
+    "Address", "City", "Age", "Gender", "DOB"
+]
 def search_patients(query):
     """
     Search for patients in the 'Patient' sheet based on the given query.
@@ -74,7 +78,7 @@ def search_patients(query):
 
     # Access the "Patient" sheet in the spreadsheet
     sheet = spreadsheet.worksheet("Patient")
-    records = sheet.get_all_records()  # Get all records from the Patient sheet
+    records = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
 
     matched = []
     for row in records:

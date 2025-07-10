@@ -94,7 +94,8 @@
             <input type="text" class="form-control" name="dob" id="dob" placeholder="DOB" onblur="calculateAge()">
           </div>
           <div class="col-md-2">
-            <select class="form-select" name="gender" id="gender">
+            <select class="form-select" name="sex" id="gender" required>
+              <option value="">Gender</option>
               <option value="M">Male</option>
               <option value="F">Female</option>
             </select>
@@ -145,43 +146,73 @@
     </div>
   </div>
 
-  <!-- Search Appointments -->
-  <div class="card opd-card mb-3">
-    <div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h5 class="mb-0">🔎 Today's Appointments</h5>
-        <a href="{{ url_for('opd.copy_appointments_to_opd') }}" class="btn btn-sm btn-outline-success">📥 Copy to OPD</a>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-sm table-bordered table-hover mb-0">
-          <thead>
-            <tr>
-              <th>#</th><th>ID</th><th>Name</th><th>F/H Name</th><th>Gender</th><th>DOB</th><th>Mobile</th><th>Address</th><th>City</th><th>Select</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for a in appointment_list %}
-            <tr>
-              <td>{{ loop.index }}</td>
-              <td>{{ a.id }}</td>
-              <td>{{ a.name }}</td>
-              <td>{{ a.hf_name }}</td>
-              <td>{{ a.gender }}</td>
-              <td>{{ a.dob }}</td>
-              <td>{{ a.mobile }}</td>
-              <td>{{ a.address }}</td>
-              <td>{{ a.city }}</td>
-              <td>
-                <button class="btn btn-sm btn-outline-primary" onclick='fillForm({{ a | tojson }})'>Select</button>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+  <!-- 🔍 Appointment Filter & Copy Controls -->
+<div class="card opd-card mb-2">
+  <div class="card-body p-2">
+    <form method="get" action="{{ url_for('opd.opd_entry') }}" class="d-flex flex-wrap align-items-center gap-2">
 
+      <!-- Today's List Toggle -->
+      <button type="button" class="btn btn-sm btn-outline-info" onclick="toggleAppointments()">
+        📅 Today's Appointment List
+      </button>
+
+      <!-- Start Date -->
+      <input type="date" class="form-control form-control-sm" name="start_date"
+             value="{{ request.args.get('start_date', '') }}" style="width: 140px;">
+
+      <!-- End Date -->
+      <input type="date" class="form-control form-control-sm" name="end_date"
+             value="{{ request.args.get('end_date', '') }}" style="width: 140px;">
+
+      <!-- Filter Button -->
+      <button type="submit" class="btn btn-sm btn-outline-primary">🔍 Filter</button>
+
+      <!-- Copy to OPD Button -->
+      <button type="button" class="btn btn-sm btn-outline-success" onclick="copyAppointmentsToOPD()">
+        📥 Copy to OPD
+      </button>
+
+      <!-- Record Count Badge -->
+      <span class="badge bg-primary ms-auto">{{ appointment_list | length }} Records</span>
+
+    </form>
+  </div>
+</div>
+
+  <!-- 🧾 Filtered Appointment Results -->
+<div class="table-responsive mb-3" id="appointments-container" style="display: none;">
+  <table class="table table-sm table-bordered table-hover mb-0">
+    <thead>
+      <tr>
+        <th>#</th><th>ID</th><th>Name</th><th>F/H Name</th><th>Gender</th>
+        <th>DOB</th><th>Mobile</th><th>Address</th><th>City</th><th>Select</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in appointment_list %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ a.id }}</td>
+        <td>{{ a.name }}</td>
+        <td>{{ a.hf_name }}</td>
+        <td>{{ a.gender }}</td>
+        <td>{{ a.dob }}</td>
+        <td>{{ a.mobile }}</td>
+        <td>{{ a.address }}</td>
+        <td>{{ a.city }}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary"
+                  data-patient='{{ a | tojson | safe }}'
+                  onclick="fillFormData(this)">Select</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+
+  
   <!-- OPD Records -->
   <div class="card opd-card">
     <div class="card-body">
@@ -192,10 +223,10 @@
             <tr>
               <th>No</th><th>Date</th><th>ID</th><th>Prefix</th><th>Name</th>
               <!-- NEW: Title column added -->
-              <th>Title</th>
+              <th>Titles</th>
               <th>H/F Name</th><th>Gender</th><th>Age</th><th>DOB</th>
-              <th>Address</th><th>City</th><th>Mobile</th><th>Fee</th>
-              <th>Staff</th><th>Status</th><th>Doctor</th><th>Action</th>
+              <th>Address</th><th>City</th><th>Mobile</th><th>Staff</th>
+              <th>Status</th><th>Doctor</th><th>Fee</th><th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -207,19 +238,19 @@
               <td class="text-center">{{ row['Prefix'] }}</td>
               <td>{{ row['Name'] }}</td>
               <td class="text-center">{{ row['Titles'] }}</td> <!-- NEW: Title value -->
-              <td>{{ row['F/H Name'] }}</td>
+              <td>{{ row['H/F Name'] }}</td>
               <td class="text-center">{{ row['Gender'] }}</td>
               <td class="text-center">{{ row['Age'] }}</td>
               <td class="text-center">{{ row['DOB'] }}</td>
               <td>{{ row['Address'] }}</td>
               <td>{{ row['City'] }}</td>
               <td class="text-center">{{ row['Mobile'] }}</td>
-              <td class="text-end">
-                {{ row['Fee Recd'] if row['Fee Recd'] else '' }}
-              </td>
               <td>{{ row['Staff'] }}</td>
               <td class="text-center">{{ row['Status'] }}</td>
               <td>{{ row['Doctor'] }}</td>
+              <td class="text-end">
+                {{ row['Fee Recd'] if row['Fee Recd'] else '' }}
+              </td>
               <td class="text-center">
                 <a href="/prescription?patient_id={{ row['ID'] }}" class="btn btn-sm btn-outline-secondary">Prescription</a>
               </td>
@@ -234,22 +265,46 @@
 
 <script>
 function fillForm(p) {
-  document.getElementById('patient_id').value = p.id || '';
-  document.getElementById('prefix').value = p.prefix || '';
-  document.getElementById('name').value = p.name || '';
-  document.getElementById('titles').value = p.titles || '';
-  document.getElementById('hf_name').value = p.hf_name || '';
-  document.getElementById('gender').value = p.gender || 'F';
-  document.getElementById('dob').value = p.dob || '';
-  document.getElementById('address').value = p.address || '';
-  document.getElementById('city').value = p.city || '';
-  document.getElementById('mobile').value = p.mobile ? parseInt(p.mobile) : '';
-  calculateAge();
+  document.getElementById("patient_id").value = p.id || '';
+  document.getElementById("prefix").value = p.prefix || '';
+  document.getElementById("name").value = p.name || '';
+  document.getElementById("titles").value = p.titles || '';
+  document.getElementById("hf_name").value = p.hf_name || '';
+  document.getElementById("dob").value = p.dob || '';
+  document.getElementById("address").value = p.address || '';
+  document.getElementById("city").value = p.city || '';
+  document.getElementById("mobile").value = p.mobile ? String(p.mobile).replace(/\D/g, '') : '';
+  document.getElementById("blood_group").value = p.blood_group || '';
+  document.getElementById("staff").value = p.staff || '';
+  document.getElementById("doctor").value = p.doctor || '';
+
+  // ✅ Gender select dropdown (not radio buttons)
+  if (p.gender === 'M' || p.gender === 'Male') {
+    document.getElementById("gender").value = 'M';
+  } else if (p.gender === 'F' || p.gender === 'Female') {
+    document.getElementById("gender").value = 'F';
+  } else {
+    document.getElementById("gender").value = '';
+  }
+
+  // Optional: recalculate age if DOB is filled
+  if (typeof calculateAge === 'function') {
+    calculateAge();
+  }
+
+  // ✅ Scroll to the form
+  const form = document.querySelector("form");
+  if (form) {
+    form.scrollIntoView({ behavior: "smooth" });
+  }
+
+  // ✅ Optional: focus on Fee input
+  document.getElementById("fee").focus();
 }
 
 function validateMobile() {
   const mobile = document.getElementById('mobile').value;
-  if (!/^\d{10}$/.test(mobile)) {
+  if (!/^[0-9]{10}$/.test(mobile)) {
     alert("⚠️ Mobile must be 10 digits");
     return false;
   }
@@ -288,6 +343,31 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 document.getElementById("live-clock").onclick = () => { is24 = !is24; };
-</script>
 
+function toggleAppointments() {
+  const container = document.getElementById('appointments-container');
+  container.style.display = container.style.display === 'none' ? 'block' : 'none';
+}
+
+function copyAppointmentsToOPD() {
+  const start = document.querySelector('input[name="start_date"]').value;
+  const end = document.querySelector('input[name="end_date"]').value;
+  let url = "/opd/copy_appointments_to_opd";
+
+  if (start || end) {
+    url += `?start_date=${start}&end_date=${end}`;
+  }
+
+  window.location.href = url;
+}
+function fillFormData(button) {
+  try {
+    const patient = JSON.parse(button.getAttribute('data-patient'));
+    fillForm(patient);
+  } catch (e) {
+    console.error("Invalid JSON in data-patient attribute", e);
+  }
+}
+
+</script>
 {% endblock %}
